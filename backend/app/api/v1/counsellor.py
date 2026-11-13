@@ -1025,7 +1025,7 @@ async def review_student_voice_meeting_request(
     return {"success": True, "meeting_request": rows[0]}
 
 
-@student_voice_router.get("/meeting-requests/{request_id}/student-identity")
+@student_voice_router.post("/meeting-requests/{request_id}/student-identity")
 async def reveal_meeting_request_student_identity(
     school_id: UUID,
     request_id: UUID,
