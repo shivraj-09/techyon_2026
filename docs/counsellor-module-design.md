@@ -1,7 +1,7 @@
 # EduSync Counsellor Module — Backend Design
 
 ## Status
-Planning baseline for `feature/counsellor-backend`. This document does not change the hosted Supabase database.
+Implementation in progress on `feature/counsellor-backend`. The referral schema migration is committed but has NOT been applied to the hosted Supabase database.
 
 ## Privacy default
 Student Voice uses **pseudonymous conversations**: the student is represented in the conversation UI by a random public reference. The counsellor can respond without the student's name being shown in the conversation view. A separate, tightly controlled identity-reveal workflow is required for a student-requested in-person meeting or a documented safety escalation. The identity mapping must never be included in ordinary conversation list/message API responses.
@@ -15,7 +15,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - Referral fields: school, student, submitting teacher, category, concern summary, urgency, status, timestamps.
 - Do not put sensitive counselling notes in the teacher-visible referral summary.
 - Teachers may see only referrals they submitted and their workflow status; they cannot read counsellor case notes or private chat.
-- Counsellors assigned to the school can review referrals, request clarification, accept, decline with a safe reason, or convert a referral into a confidential case.
+- Active counsellors in the school can review referrals, request clarification, accept, decline, or close a referral. The first implementation assigns a referral to the counsellor who first reviews it; conversion to a confidential case is a later step.
 - Admins may manage counsellor membership but do not receive access to confidential case notes or Student Voice content by virtue of being admins.
 
 ### 2. Confidential counselling cases
@@ -62,7 +62,7 @@ This is the recommended default inferred from the project discussion; confirm be
 8. Keep sensitive bodies out of application logs, error messages, analytics, and notifications.
 
 ## API modules (planned)
-- `/schools/{school_id}/referrals`: create, list own/submitted, counsellor review and status transitions.
+- `/schools/{school_id}/counsellor/referrals`: teacher create/list-own; counsellor school inbox/list and review/status transitions. Implemented in `backend/app/api/v1/counsellor.py` with request models in `backend/app/schemas/counsellor.py`.
 - `/schools/{school_id}/counselling/cases`: counsellor-only case lifecycle and notes.
 - `/schools/{school_id}/counselling/sessions`: create, publish, list, register, cancel.
 - `/schools/{school_id}/student-voice/conversations`: student create/list own, counsellor inbox.
@@ -73,7 +73,7 @@ This is the recommended default inferred from the project discussion; confirm be
 1. Audit existing authorization helpers, membership role parsing, guardian/student relationships, class enrollment, and invite flow.
 2. Add the counsellor role safely and update backend role validation.
 3. Add schema and RLS migrations; review with Supabase advisors before applying to the hosted project.
-4. Implement referrals and test school/class isolation.
+4. Implement referral intake/review API and test school/class isolation. (Initial code and migration are committed; runtime tests and live migration are pending.)
 5. Implement private cases and audit events.
 6. Implement sessions/notices.
 7. Implement Student Voice, pseudonymous identity separation, meeting requests, and safety escalation.
