@@ -116,3 +116,37 @@ class CounsellingNoticeCreate(BaseModel):
         if self.class_id is not None and self.audience != "students":
             raise ValueError("class-specific notices must target students")
         return self
+
+
+class StudentVoiceLinkCreate(BaseModel):
+    student_id: UUID
+    student_user_id: UUID
+
+
+class StudentVoiceMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("body")
+    @classmethod
+    def normalize_message(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Message cannot be empty")
+        return value
+
+
+class StudentVoiceMeetingRequestCreate(BaseModel):
+    preferred_times: str = Field(min_length=1, max_length=2000)
+    student_message: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("preferred_times")
+    @classmethod
+    def normalize_preferred_times(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Please provide preferred meeting times")
+        return value
+
+
+class StudentVoiceMeetingReview(BaseModel):
+    status: Literal["approved", "declined", "completed"]
