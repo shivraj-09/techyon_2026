@@ -15,6 +15,9 @@ export default function StudentVoiceLinksPage() {
   const [links, setLinks] = useState<LinkRecord[]>([]);
   const [studentId, setStudentId] = useState("");
   const [studentUserId, setStudentUserId] = useState("");
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"counsellor" | "teacher" | "parent">("counsellor");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -76,6 +79,20 @@ export default function StudentVoiceLinksPage() {
       .finally(() => setLoading(false));
   }, [schoolId, token, load]);
 
+  async function inviteMember(event: FormEvent) {
+    event.preventDefault();
+    setError(""); setMessage(""); setBusy(true);
+    try {
+      await request(`/schools/${schoolId}/members/invite`, {
+        method: "POST",
+        body: JSON.stringify({ email: inviteEmail.trim(), full_name: inviteName.trim(), role: inviteRole }),
+      });
+      setInviteName(""); setInviteEmail("");
+      setMessage(`Invitation sent for the ${inviteRole} role.`);
+    } catch (err) { setError(err instanceof Error ? err.message : "Could not send invitation."); }
+    finally { setBusy(false); }
+  }
+
   async function createLink(event: FormEvent) {
     event.preventDefault();
     setError(""); setMessage(""); setBusy(true);
@@ -106,6 +123,16 @@ export default function StudentVoiceLinksPage() {
     <AppLayout defaultRole="admin">
       <div className="es-stack">
         <PageHeader title="Student Voice Access" subtitle="Manage which authenticated student accounts can use pseudonymous Student Voice." />
+        <section className="es-card">
+          <h2>Invite a school member</h2>
+          <p className="es-muted">Invite a counsellor, teacher or parent. The invitee must confirm their email and accept the invitation before the membership becomes active.</p>
+          <form onSubmit={inviteMember} className="es-form-grid">
+            <label>Full name<input value={inviteName} onChange={(e) => setInviteName(e.target.value)} required maxLength={120} /></label>
+            <label>Email address<input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required maxLength={254} /></label>
+            <label>Role<select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as typeof inviteRole)}><option value="counsellor">Counsellor</option><option value="teacher">Teacher</option><option value="parent">Parent / Guardian</option></select></label>
+            <Button type="submit" disabled={busy || !inviteName.trim() || !inviteEmail.trim()}>Send invitation</Button>
+          </form>
+        </section>
         <section className="es-card">
           <h2>Link a student account</h2>
           <p className="es-muted">Use the student's school record UUID and their Supabase Auth user UUID. Verify both identifiers before creating a link. A student and an Auth account can each be linked only once per school.</p>
