@@ -37,12 +37,12 @@ INSERT INTO public.classes (id, school_id, name, academic_year) VALUES
  ('30000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'Class B', '2026-27'),
  ('30000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'Class C', '2026-27');
 
-INSERT INTO public.students (id, school_id, admission_no, first_name) VALUES
- ('40000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'RLS-001', 'Student One'),
- ('40000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'RLS-002', 'Student Two'),
- ('40000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'RLS-003', 'Student Three');
-INSERT INTO public.students (id, school_id, admission_no, first_name) VALUES
- ('40000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'RLS-004', 'Dual Role Account');
+INSERT INTO public.students (id, school_id, admission_no, first_name, last_name) VALUES
+ ('40000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'RLS-001', 'Student One', 'Nair'),
+ ('40000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'RLS-002', 'Student Two', 'Test'),
+ ('40000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'RLS-003', 'Student Three', 'Test');
+INSERT INTO public.students (id, school_id, admission_no, first_name, last_name) VALUES
+ ('40000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'RLS-004', 'Dual Role', 'Account');
 
 INSERT INTO public.class_teacher_assignments (school_id, class_id, teacher_user_id) VALUES
  ('10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001'),
@@ -153,6 +153,90 @@ BEGIN
      OR (SELECT count(*) FROM public.student_voice_messages) <> 1 THEN
     RAISE EXCEPTION 'Active linked student cannot read their own Student Voice data';
   END IF;
+END $$;
+RESET ROLE;
+
+-- Identity reveal is denied while the meeting request is pending.
+-- After approval, only the assigned counsellor receives minimal identity fields,
+-- and the reveal is audited in the same transaction.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
+DO $$
+DECLARE
+  v_request_id uuid;
+  v_identity record;
+  v_audit_count integer;
+BEGIN
+  SELECT id INTO v_request_id
+  FROM public.student_voice_meeting_requests
+  WHERE conversation_id = '70000000-0000-4000-8000-000000000001';
+
+  BEGIN
+    PERFORM 1 FROM public.reveal_student_voice_identity(
+      '10000000-0000-4000-8000-000000000001', v_request_id
+    );
+    RAISE EXCEPTION 'Pending meeting request unexpectedly revealed identity';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  UPDATE public.student_voice_conversations
+     SET assigned_counsellor_id = auth.uid()
+   WHERE id = '70000000-0000-4000-8000-000000000001'
+     AND school_id = '10000000-0000-4000-8000-000000000001';
+
+  UPDATE public.student_voice_meeting_requests
+     SET status = 'approved', handled_by = auth.uid(), handled_at = now()
+   WHERE id = v_request_id
+     AND school_id = '10000000-0000-4000-8000-000000000001';
+
+  SELECT * INTO v_identity
+  FROM public.reveal_student_voice_identity(
+    '10000000-0000-4000-8000-000000000001', v_request_id
+  );
+
+  IF v_identity.student_name <> 'Student One Nair'
+     OR v_identity.admission_no <> 'RLS-001'
+     OR v_identity.class_name <> 'Class A'
+     OR v_identity.academic_year <> '2026-27' THEN
+    RAISE EXCEPTION 'Audited identity reveal returned incomplete or incorrect student details';
+  END IF;
+END $$;
+RESET ROLE;
+
+DO $$
+DECLARE
+  v_audit_count integer;
+BEGIN
+  SELECT count(*) INTO v_audit_count
+  FROM public.student_voice_identity_reveal_audit
+  WHERE meeting_request_id = (
+    SELECT id FROM public.student_voice_meeting_requests
+    WHERE conversation_id = '70000000-0000-4000-8000-000000000001'
+  );
+  IF v_audit_count <> 1 THEN
+    RAISE EXCEPTION 'Successful identity reveal did not create exactly one audit event';
+  END IF;
+END $$;
+
+-- A counsellor from another school cannot reveal the identity.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000004', true);
+DO $$
+DECLARE
+  v_request_id uuid;
+BEGIN
+  SELECT id INTO v_request_id
+  FROM public.student_voice_meeting_requests
+  WHERE conversation_id = '70000000-0000-4000-8000-000000000001';
+  BEGIN
+    PERFORM 1 FROM public.reveal_student_voice_identity(
+      '10000000-0000-4000-8000-000000000001', v_request_id
+    );
+    RAISE EXCEPTION 'Cross-school counsellor unexpectedly revealed identity';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
 END $$;
 RESET ROLE;
 
