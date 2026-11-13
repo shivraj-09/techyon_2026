@@ -228,7 +228,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
-END $;
+END $$;
 RESET ROLE;
 DELETE FROM public.school_memberships
 WHERE school_id = '10000000-0000-4000-8000-000000000001'
