@@ -1,7 +1,7 @@
 # EduSync Counsellor Module — Backend Design
 
 ## Status
-Implementation in progress on `feature/counsellor-backend`. The referral schema migration is committed but has NOT been applied to the hosted Supabase database.
+Feature-branch implementation is complete on `feature/counsellor-backend`, including the counsellor workspace UI, Supabase sign-in/invitation flow, API routes, migrations, and regression tests. The feature migrations have NOT been applied to the hosted Supabase database. CI validates frontend production compilation and backend mocked/static regression tests; PostgreSQL/RLS execution remains blocked until the canonical base schema is recovered.
 
 ## Privacy default
 Student Voice uses **pseudonymous conversations**: the student is represented in the conversation UI by a random public reference. The counsellor can respond without the student's name being shown in the conversation view. A separate, tightly controlled identity-reveal workflow is required for a student-requested in-person meeting or a documented safety escalation. The identity mapping must never be included in ordinary conversation list/message API responses.
@@ -26,7 +26,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - Every read/write to highly sensitive case content should be auditable at the API layer. Avoid logging note bodies or message bodies.
 
 ### 3. Sessions and notices
-- Counsellors create sessions with audience (students, parents, teachers), title, description, start/end, capacity, location/meeting mode, and publication status. Initial API and schema are committed. Active parent and teacher memberships can read published items addressed to their role. Student delivery is pending because the current schema has no authenticated student-to-user mapping.
+- Counsellors create sessions with audience (students, parents, teachers), title, description, start/end, capacity, location/meeting mode, and publication status. Counsellors can publish, cancel, or complete sessions through creator-scoped conditional status updates. Notices can be published or cancelled through the same creator-scoped pattern. Active parent and teacher memberships can read published items addressed to their role. Student delivery is pending because the current schema has no authenticated student-to-user mapping.
 - Notices support audience, optional class targeting for student notices, scheduled publication, expiry, and draft/published/cancelled status. Parent/teacher reads are filtered by RLS. Student-targeted delivery remains pending student authentication mapping.
 - Registrations are scoped to the school and session. Attendance/registration visibility is limited to the counsellor and the registrant as appropriate.
 - Parent-facing sessions must not expose student counselling case details.
@@ -64,7 +64,7 @@ This is the recommended default inferred from the project discussion; confirm be
 ## API modules (planned)
 - `/schools/{school_id}/counsellor/referrals`: teacher create/list-own; counsellor school inbox/list and review/status transitions. Implemented in `backend/app/api/v1/counsellor.py` with request models in `backend/app/schemas/counsellor.py`.
 - `/schools/{school_id}/counselling/cases`: counsellor-only case creation from accepted referrals, case listing/status, and private append-only notes. Implemented in `backend/app/api/v1/counsellor.py`.
-- `/schools/{school_id}/counselling/sessions`: counsellor create and audience-filtered list. `/schools/{school_id}/counselling/notices`: counsellor create and audience-filtered list. Implemented in `backend/app/api/v1/counsellor.py`; registration and cancellation workflows remain pending.
+- `/schools/{school_id}/counselling/sessions`: counsellor create/list and `PATCH /sessions/{session_id}` for creator-scoped publish/cancel/complete transitions. `/schools/{school_id}/counselling/notices`: counsellor create/list and `PATCH /notices/{notice_id}` for creator-scoped publish/cancel transitions. Implemented in `backend/app/api/v1/counsellor.py`; session registration/attendance remains pending.
 - `/schools/{school_id}/student-voice/links`: admin links an existing student record to a Supabase Auth user; `PATCH /links/{link_id}/revoke` lets an active school admin revoke that link. Revocation is terminal and enforced by a database trigger. `/schools/{school_id}/student-voice/conversations`: student create/list own; `/inbox`: counsellor pseudonymous inbox.
 - `/schools/{school_id}/student-voice/conversations/{conversation_id}/messages`: student/counsellor read and send. `/meeting-requests`: student request, counsellor review, and explicit identity reveal after approval. Identity reveal is audited before the student record ID is returned. Implemented in `backend/app/api/v1/counsellor.py`; runtime tests and live migration are pending.
 
@@ -77,6 +77,22 @@ This is the recommended default inferred from the project discussion; confirm be
 6. Implement counselling sessions and notices. (Schema, RLS, and create/list APIs are committed; student audience delivery, registrations, runtime tests, and live migration are pending.)
 7. Implement Student Voice pseudonymous conversations, messages, and meeting requests. (Initial schema, RLS, admin-managed student account linking, explicit approved-meeting identity reveal, and reveal audit trail are committed; student account linking requires an admin to verify the Auth user ID. Safety escalation is not implemented.)
 8. Add API tests for role boundaries, cross-school isolation, and non-disclosure of student identity.
+
+
+## Frontend integration
+
+- The latest frontend from dev is preserved on the feature branch; the integration commit uses the current dev tree and overlays the backend feature without replacing the newer UI.
+- Supabase browser auth is restored in frontend/lib/supabase/client.ts. Login verifies the access token and active school membership through FastAPI before routing by the selected membership role.
+- Invitation acceptance exchanges/verifies the Supabase invite token, loads the signed-in user's pending invitations through FastAPI, and activates memberships through the authenticated accept endpoint.
+- /counsellor/dashboard provides referral review, confidential case status and private-note creation, session/notice creation and publishing, Student Voice replies, meeting-request review, and explicit audited identity reveal.
+- Client-side role switching was removed; the backend remains the authorization boundary.
+
+## Verification and remaining blockers
+
+- GitHub Actions runs frontend dependency installation and Next.js production build, backend dependency installation and Python compilation, and the counsellor unittest suite.
+- Route tests mock Supabase/PostgREST HTTP responses; SQL contract tests inspect policy and trigger definitions. These are not PostgreSQL execution tests.
+- The repository still lacks canonical foundational schema migrations/snapshot for schools, memberships, students, classes, enrollments, and class-teacher assignments. Do not invent this schema or apply feature migrations to the hosted project as a substitute.
+- Recover a schema-only dump from the actual Supabase project or original backend owner, then run the complete migration chain and RLS tests against a disposable local Supabase/PostgreSQL instance before production deployment.
 
 ## Non-goals for initial release
 - Automated mental-health diagnosis or risk scoring.
