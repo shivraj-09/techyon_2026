@@ -247,6 +247,39 @@ class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
         self.assertEqual(request.await_count, 2)
 
 
+    async def test_dual_student_counsellor_identity_is_rejected(self):
+        from unittest.mock import AsyncMock, patch
+
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        conversation_id = UUID("00000000-0000-0000-0000-000000000030")
+        user = {"id": "00000000-0000-0000-0000-000000000040"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        active_link = httpx.Response(200, json=[{"id": "link-id"}])
+        memberships = [{
+            "school_id": str(school_id), "role": "counsellor", "status": "active"
+        }]
+
+        with patch.object(counsellor, "_request", new=AsyncMock(return_value=active_link)) as request, patch.object(
+            counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.send_student_voice_message(
+                    school_id=school_id,
+                    conversation_id=conversation_id,
+                    payload=StudentVoiceMessageCreate(body="Hello"),
+                    current_user=user,
+                    credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 403)
+        request.assert_awaited_once()
+
+
 class StudentVoiceMigrationContractTests(TestCase):
     """Static SQL guardrails; these do not replace PostgreSQL/RLS integration tests."""
 
