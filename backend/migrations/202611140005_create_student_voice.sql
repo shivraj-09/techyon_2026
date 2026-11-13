@@ -87,7 +87,7 @@ grant select (id, school_id, public_ref, status, assigned_counsellor_id, created
 grant select (id, school_id, conversation_id, sender_kind, body, created_at, read_at),
       insert (school_id, conversation_id, sender_kind, sender_user_id, body)
       on public.student_voice_messages to authenticated;
-grant select (id, school_id, conversation_id, preferred_times, student_message, status, handled_by, handled_at, created_at),
+grant select (id, school_id, conversation_id, requested_by, preferred_times, student_message, status, handled_by, handled_at, created_at),
       insert (school_id, conversation_id, requested_by, preferred_times, student_message),
       update (status, handled_by, handled_at) on public.student_voice_meeting_requests to authenticated;
 
