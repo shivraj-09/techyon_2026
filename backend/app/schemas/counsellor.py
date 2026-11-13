@@ -57,3 +57,23 @@ class ReferralReviewUpdate(BaseModel):
             return None
         value = value.strip()
         return value or None
+
+
+class CaseCreateFromReferral(BaseModel):
+    referral_id: UUID
+
+
+class CaseStatusUpdate(BaseModel):
+    status: Literal["in_progress", "closed"]
+
+
+class CaseNoteCreate(BaseModel):
+    note_body: str = Field(min_length=1, max_length=10000)
+
+    @field_validator("note_body")
+    @classmethod
+    def normalize_note(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Note cannot be empty")
+        return value
