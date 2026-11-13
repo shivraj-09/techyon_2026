@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from unittest import IsolatedAsyncioTestCase, TestCase
+from uuid import UUID
 
 from pydantic import ValidationError
 
