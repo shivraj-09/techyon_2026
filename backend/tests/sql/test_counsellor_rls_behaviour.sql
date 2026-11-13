@@ -356,6 +356,27 @@ END $$;
 RESET ROLE;
 
 
+-- Revocation also blocks a previously approved identity reveal.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000008', true);
+DO $$
+DECLARE
+  v_request_id uuid;
+BEGIN
+  SELECT id INTO v_request_id
+  FROM public.student_voice_meeting_requests
+  WHERE conversation_id = '70000000-0000-4000-8000-000000000001';
+  BEGIN
+    PERFORM 1 FROM public.reveal_student_voice_identity(
+      '10000000-0000-4000-8000-000000000001', v_request_id
+    );
+    RAISE EXCEPTION 'Revoked student link unexpectedly permitted identity reveal';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END $$;
+RESET ROLE;
+
 -- Trigger functions must not be callable as public RPCs after hardening.
 DO $$
 BEGIN
