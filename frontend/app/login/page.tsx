@@ -372,7 +372,7 @@ export default function LoginPage() {
                     autoComplete="current-password"
                     placeholder="••••••••••••"
                     // [DISCONNECTED FOR UI PREVIEW] Removed `required` so you can click Sign In directly without entering a password
-                    // required
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
