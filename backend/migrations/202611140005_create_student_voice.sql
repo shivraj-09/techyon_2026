@@ -330,3 +330,55 @@ create trigger student_voice_message_last_message after insert on public.student
 for each row execute function public.set_student_voice_last_message_at();
 
 revoke all on function public.set_student_voice_last_message_at() from public, anon, authenticated;
+
+
+-- Append-only audit trail for each controlled identity reveal.
+create table if not exists public.student_voice_identity_reveal_audit (
+    id uuid primary key default gen_random_uuid(),
+    school_id uuid not null,
+    meeting_request_id uuid not null references public.student_voice_meeting_requests(id) on delete restrict,
+    counsellor_user_id uuid not null references auth.users(id) on delete restrict,
+    student_id uuid not null,
+    revealed_at timestamptz not null default now(),
+    constraint student_voice_identity_audit_student_fk
+        foreign key (school_id, student_id) references public.students(school_id, id)
+);
+create index if not exists student_voice_identity_audit_school_time_idx
+    on public.student_voice_identity_reveal_audit (school_id, revealed_at desc);
+alter table public.student_voice_identity_reveal_audit enable row level security;
+revoke all on public.student_voice_identity_reveal_audit from anon;
+grant insert (school_id, meeting_request_id, counsellor_user_id, student_id) on public.student_voice_identity_reveal_audit to authenticated;
+grant select (id, school_id, meeting_request_id, counsellor_user_id, student_id, revealed_at) on public.student_voice_identity_reveal_audit to authenticated;
+
+drop policy if exists student_voice_identity_audit_counsellor_insert on public.student_voice_identity_reveal_audit;
+create policy student_voice_identity_audit_counsellor_insert on public.student_voice_identity_reveal_audit
+for insert to authenticated
+with check (
+    counsellor_user_id = (select auth.uid())
+    and exists (
+        select 1 from public.school_memberships m
+        where m.school_id = student_voice_identity_reveal_audit.school_id
+          and m.user_id = (select auth.uid())
+          and m.role = 'counsellor'::public.membership_role
+          and m.status = 'active'::public.membership_status
+    )
+    and exists (
+        select 1 from public.student_voice_meeting_requests mr
+        where mr.id = student_voice_identity_reveal_audit.meeting_request_id
+          and mr.school_id = student_voice_identity_reveal_audit.school_id
+          and mr.status = 'approved'
+    )
+);
+drop policy if exists student_voice_identity_audit_counsellor_read_own on public.student_voice_identity_reveal_audit;
+create policy student_voice_identity_audit_counsellor_read_own on public.student_voice_identity_reveal_audit
+for select to authenticated
+using (
+    counsellor_user_id = (select auth.uid())
+    and exists (
+        select 1 from public.school_memberships m
+        where m.school_id = student_voice_identity_reveal_audit.school_id
+          and m.user_id = (select auth.uid())
+          and m.role = 'counsellor'::public.membership_role
+          and m.status = 'active'::public.membership_status
+    )
+);
