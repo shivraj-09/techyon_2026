@@ -11,6 +11,8 @@ from app.schemas.counsellor import (
     CaseCreateFromReferral,
     CaseNoteCreate,
     CaseStatusUpdate,
+    CounsellingNoticeCreate,
+    CounsellingSessionCreate,
     ReferralCreate,
     ReferralReviewUpdate,
 )
@@ -389,3 +391,109 @@ async def add_case_note(
     if not rows:
         raise HTTPException(status_code=502, detail="Note was saved but no record was returned")
     return {"success": True, "note": rows[0]}
+
+
+sessions_router = APIRouter(prefix="/schools/{school_id}/counselling", tags=["Counselling Sessions"])
+
+
+@sessions_router.post("/sessions", status_code=status.HTTP_201_CREATED)
+async def create_counselling_session(
+    school_id: UUID,
+    payload: CounsellingSessionCreate,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Create a session or publish it to its intended audience."""
+    now = datetime.now(timezone.utc)
+    response = await _request(
+        "counselling_sessions",
+        "POST",
+        credentials,
+        params={"select": "id,school_id,created_by,title,description,audience,class_id,starts_at,ends_at,capacity,location,meeting_mode,status,published_at,created_at,updated_at"},
+        payload={
+            "school_id": str(school_id),
+            "created_by": current_user["id"],
+            **payload.model_dump(mode="json", exclude={"status"}),
+            "status": payload.status,
+            "published_at": now.isoformat() if payload.status == "published" else None,
+        },
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not create counselling session")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Session created but no record was returned")
+    return {"success": True, "session": rows[0]}
+
+
+@sessions_router.get("/sessions")
+async def list_counselling_sessions(
+    school_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    membership: dict = Depends(require_school_roles("counsellor", "teacher", "parent")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Counsellors see their school sessions; parents/teachers see published sessions for their audience."""
+    params = {
+        "select": "id,school_id,created_by,title,description,audience,class_id,starts_at,ends_at,capacity,location,meeting_mode,status,published_at,created_at,updated_at",
+        "school_id": f"eq.{school_id}",
+        "order": "starts_at.asc",
+        "limit": str(limit),
+        "offset": str(offset),
+    }
+    if membership.get("role") != "counsellor":
+        params["status"] = "eq.published"
+    response = await _request("counselling_sessions", "GET", credentials, params=params)
+    return {"success": True, "sessions": _rows(response), "limit": limit, "offset": offset}
+
+
+@sessions_router.post("/notices", status_code=status.HTTP_201_CREATED)
+async def create_counselling_notice(
+    school_id: UUID,
+    payload: CounsellingNoticeCreate,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Create an audience-scoped notice; publication time controls when recipients can read it."""
+    response = await _request(
+        "counselling_notices",
+        "POST",
+        credentials,
+        params={"select": "id,school_id,created_by,title,body,audience,class_id,publish_at,expires_at,status,created_at,updated_at"},
+        payload={
+            "school_id": str(school_id),
+            "created_by": current_user["id"],
+            **payload.model_dump(mode="json"),
+        },
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not create counselling notice")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Notice created but no record was returned")
+    return {"success": True, "notice": rows[0]}
+
+
+@sessions_router.get("/notices")
+async def list_counselling_notices(
+    school_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    membership: dict = Depends(require_school_roles("counsellor", "teacher", "parent")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Return only notices allowed by audience RLS and publication windows."""
+    params = {
+        "select": "id,school_id,created_by,title,body,audience,class_id,publish_at,expires_at,status,created_at,updated_at",
+        "school_id": f"eq.{school_id}",
+        "order": "publish_at.desc",
+        "limit": str(limit),
+        "offset": str(offset),
+    }
+    if membership.get("role") != "counsellor":
+        params["status"] = "eq.published"
+    response = await _request("counselling_notices", "GET", credentials, params=params)
+    return {"success": True, "notices": _rows(response), "limit": limit, "offset": offset}
