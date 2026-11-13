@@ -38,6 +38,52 @@ async def read_my_memberships(
         "memberships": memberships,
     }
 
+
+@router.get("/student-voice-access")
+async def read_my_student_voice_access(
+    current_user: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+):
+    """Return only active Student Voice links visible to the authenticated student under RLS."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{settings.SUPABASE_URL.rstrip('/')}/rest/v1/student_voice_student_links",
+                headers={
+                    "apikey": settings.SUPABASE_PUBLISHABLE_KEY,
+                    "Authorization": f"Bearer {credentials.credentials}",
+                },
+                params={
+                    "select": "school_id,student_id",
+                    "student_user_id": f"eq.{current_user['id']}",
+                    "status": "eq.active",
+                    "order": "created_at.asc",
+                },
+            )
+    except httpx.RequestError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Student Voice access service temporarily unavailable",
+        )
+    if response.status_code != status.HTTP_200_OK:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Could not verify Student Voice access",
+        )
+    try:
+        links = response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="Invalid Student Voice access response")
+    if not isinstance(links, list):
+        raise HTTPException(status_code=502, detail="Invalid Student Voice access response")
+    return {"success": True, "access": links}
+
 @router.get("/pending-invitations")
 async def read_my_pending_invitations(
     current_user: dict = Depends(get_current_user),
