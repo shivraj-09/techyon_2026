@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout, PageHeader } from "@/components/layout";
-import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Select } from "@/components/ui";
+import { Badge, Button, Card, CardBody, CardHeader, CardTitle, Select } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
 type ClassOption = { id: string; name: string; grade_level: string | null; section: string | null; academic_year: string };
