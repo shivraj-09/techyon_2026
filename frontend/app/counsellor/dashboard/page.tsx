@@ -355,7 +355,7 @@ export default function CounsellorDashboardPage() {
                   <h3>Create notice (draft)</h3>
                   <label>Title<input value={noticeTitle} onChange={(e) => setNoticeTitle(e.target.value)} required maxLength={160} /></label>
                   <label>Message<textarea value={noticeBody} onChange={(e) => setNoticeBody(e.target.value)} required maxLength={5000} /></label>
-                  <label>Audience<select value={noticeAudience} onChange={(e) => setNoticeAudience(e.target.value)}><option value="students">Students</option><option value="parents">Parents</option><option value="teachers">Teachers</option></select></label>
+                  <label>Audience<select value={noticeAudience} onChange={(e) => setNoticeAudience(e.target.value)}><option value="parents">Parents</option><option value="teachers">Teachers</option></select></label>
                   <Button type="submit">Save notice draft</Button>
                 </form>
               </div>
