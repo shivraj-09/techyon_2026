@@ -47,4 +47,6 @@ jobs:
       - name: Run counsellor schema tests
         env:
           PYTHONPATH: backend
+          SUPABASE_URL: https://example.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: example-publishable-key
         run: python -m unittest discover -s backend/tests -v
