@@ -39,10 +39,10 @@ export default function CounsellorDashboardPage() {
   const [sessionDescription, setSessionDescription] = useState("");
   const [sessionStart, setSessionStart] = useState("");
   const [sessionEnd, setSessionEnd] = useState("");
-  const [sessionAudience, setSessionAudience] = useState("students");
+  const [sessionAudience, setSessionAudience] = useState("teachers");
   const [noticeTitle, setNoticeTitle] = useState("");
   const [noticeBody, setNoticeBody] = useState("");
-  const [noticeAudience, setNoticeAudience] = useState("students");
+  const [noticeAudience, setNoticeAudience] = useState("teachers");
 
   const apiFetch = useCallback(async (path: string, init: RequestInit = {}) => {
     if (!token) throw new Error("Your session is not ready. Sign in again.");
@@ -340,13 +340,13 @@ export default function CounsellorDashboardPage() {
             </section>
 
             <section id="sessions" className="es-card">
-              <h2>Counselling sessions & notices</h2>
+              <h2>Counselling sessions & notices</h2><p className="es-muted">In this release, publishing is limited to parent and teacher audiences. Student-facing session registration and notice delivery are not yet available.</p>
               <div className="es-dashboard-grid-main">
                 <form onSubmit={createSession} className="es-form-grid">
                   <h3>Create session (draft)</h3>
                   <label>Title<input value={sessionTitle} onChange={(e) => setSessionTitle(e.target.value)} required maxLength={160} /></label>
                   <label>Description<textarea value={sessionDescription} onChange={(e) => setSessionDescription(e.target.value)} required maxLength={5000} /></label>
-                  <label>Audience<select value={sessionAudience} onChange={(e) => setSessionAudience(e.target.value)}><option value="students">Students</option><option value="parents">Parents</option><option value="teachers">Teachers</option></select></label>
+                  <label>Audience<select value={sessionAudience} onChange={(e) => setSessionAudience(e.target.value)}><option value="parents">Parents</option><option value="teachers">Teachers</option></select></label>
                   <label>Starts at<input type="datetime-local" value={sessionStart} onChange={(e) => setSessionStart(e.target.value)} required /></label>
                   <label>Ends at<input type="datetime-local" value={sessionEnd} onChange={(e) => setSessionEnd(e.target.value)} required /></label>
                   <Button type="submit">Save session draft</Button>
