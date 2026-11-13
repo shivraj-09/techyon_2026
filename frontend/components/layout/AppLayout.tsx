@@ -157,15 +157,20 @@ export function AppLayout({
   }
 
   async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("edusync_demo_email");
-      sessionStorage.removeItem("edusync_demo_role");
-      sessionStorage.removeItem("edusync_active_school_id");
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Always clear the local workspace selection even if the auth request fails.
+    } finally {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("edusync_demo_email");
+        sessionStorage.removeItem("edusync_demo_role");
+        sessionStorage.removeItem("edusync_active_school_id");
+      }
+      router.replace("/login");
+      router.refresh();
     }
-    router.replace("/login");
-    router.refresh();
   }
 
   return (
