@@ -15,7 +15,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $$$
     select exists (
         select 1
         from public.student_voice_conversations c
@@ -47,7 +47,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $$$
     select exists (
         select 1
         from public.student_voice_conversations c
@@ -80,7 +80,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $$$
     select exists (
         select 1
         from public.student_voice_conversations c
@@ -113,7 +113,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $$$
     select exists (
         select 1
         from public.student_voice_conversations c
@@ -136,7 +136,7 @@ as $$
               )
           )
     );
-$;
+$$;
 
 create or replace function public.student_voice_counsellor_can_handle_meeting(
     p_school_id uuid,
@@ -147,7 +147,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
     select exists (
         select 1
         from public.student_voice_conversations c
@@ -169,7 +169,7 @@ as $
               )
           )
     );
-$;
+$$;
 
 revoke all on function public.student_voice_owns_active_conversation(uuid, uuid) from public, anon;
 revoke all on function public.student_voice_student_can_message_conversation(uuid, uuid) from public, anon;
