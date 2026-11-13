@@ -76,8 +76,8 @@ export default function LoginPage() {
     setSuccess("");
     setBusy(true);
     try {
-      if (!selectedRole || selectedRole === "student") {
-        throw new Error("Choose a supported school role to continue.");
+      if (!selectedRole) {
+        throw new Error("Choose a role to continue.");
       }
       const supabase = createClient();
       const cleanInput = email.trim();
