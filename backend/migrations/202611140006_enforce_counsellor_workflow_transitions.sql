@@ -24,6 +24,11 @@ begin
             raise exception 'Invalid referral status transition: % -> %', old.status, new.status
                 using errcode = '23514';
         end if;
+
+        if new.assigned_counsellor_id is distinct from (select auth.uid()) then
+            raise exception 'A counsellor must claim a referral before changing its status'
+                using errcode = '42501';
+        end if;
     end if;
 
     -- A referral may be claimed once; another counsellor cannot take it over,
@@ -88,6 +93,15 @@ begin
        or new.preferred_times is distinct from old.preferred_times
        or new.student_message is distinct from old.student_message then
         raise exception 'Meeting request details are immutable'
+            using errcode = '42501';
+    end if;
+
+    if new.status is not distinct from old.status
+       and (
+           new.handled_by is distinct from old.handled_by
+           or new.handled_at is distinct from old.handled_at
+       ) then
+        raise exception 'Handling metadata can only change during a valid status transition'
             using errcode = '42501';
     end if;
 
