@@ -191,8 +191,16 @@ async def review_referral(
     if not existing_rows:
         raise HTTPException(status_code=404, detail="Referral not found")
     existing = existing_rows[0]
-    if existing["status"] == "closed":
-        raise HTTPException(status_code=409, detail="Closed referrals cannot be changed")
+    allowed_transitions = {
+        "submitted": {"under_review", "clarification_requested", "accepted", "declined", "closed"},
+        "under_review": {"clarification_requested", "accepted", "declined", "closed"},
+        "clarification_requested": {"under_review", "accepted", "declined", "closed"},
+        "accepted": {"closed"},
+        "declined": {"closed"},
+        "closed": set(),
+    }
+    if payload.status not in allowed_transitions.get(existing["status"], set()):
+        raise HTTPException(status_code=409, detail="Invalid referral status transition")
     if existing.get("assigned_counsellor_id") not in (None, current_user["id"]):
         raise HTTPException(status_code=409, detail="This referral is assigned to another counsellor")
 
@@ -761,13 +769,31 @@ async def review_student_voice_meeting_request(
     _counsellor: dict = Depends(require_school_roles("counsellor")),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
+    existing_rows = _rows(await _request(
+        "student_voice_meeting_requests", "GET", credentials,
+        params={
+            "select": "id,status",
+            "id": f"eq.{request_id}",
+            "school_id": f"eq.{school_id}",
+            "limit": "1",
+        },
+    ))
+    if not existing_rows:
+        raise HTTPException(status_code=404, detail="Meeting request not found")
+    current_status = existing_rows[0]["status"]
+    allowed_transitions = {
+        "pending": {"approved", "declined"},
+        "approved": {"completed"},
+    }
+    if payload.status not in allowed_transitions.get(current_status, set()):
+        raise HTTPException(status_code=409, detail="Invalid meeting request status transition")
     response = await _request(
         "student_voice_meeting_requests", "PATCH", credentials,
         params={
             "select": "id,school_id,conversation_id,preferred_times,student_message,status,handled_by,handled_at,created_at",
             "id": f"eq.{request_id}",
             "school_id": f"eq.{school_id}",
-            "status": "eq.pending",
+            "status": f"eq.{current_status}",
         },
         payload={
             "status": payload.status,
