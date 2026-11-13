@@ -60,7 +60,7 @@ export function AttendanceRoster({
               key={entry.studentId}
               style={{
                 backgroundColor: isUnmarked
-                  ? "rgba(254, 243, 199, 0.18)"
+                  ? "var(--es-row-warning-tint)"
                   : undefined,
               }}
             >

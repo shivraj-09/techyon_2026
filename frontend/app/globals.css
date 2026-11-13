@@ -11,19 +11,20 @@ html {
 
 body {
   margin: 0;
-  background-color: #f5f7fa;
-  color: #212529;
+  background-color: var(--es-bg-app, #f5f7fa);
+  color: var(--es-text-primary, #212529);
   font-family: var(--font-dm-sans), system-ui, -apple-system, sans-serif;
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  caret-color: #1d6ce0;
+  caret-color: var(--es-primary, #1d6ce0);
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 ::selection {
-  background-color: #eaf4ff;
-  color: #043873;
+  background-color: var(--es-selection-bg, #eaf4ff);
+  color: var(--es-selection-fg, #043873);
 }
 
 /* Crisp tabular numerals for tables, attendance & finance metrics */
@@ -42,12 +43,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--es-scrollbar-thumb, #cbd5e1);
   border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--es-scrollbar-thumb-hover, #94a3b8);
 }
 
 /* Focus outline baseline for standalone pages */
@@ -56,15 +57,15 @@ button:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #1d6ce0;
+  outline: 2px solid var(--es-ring, #1d6ce0);
   outline-offset: 2px;
 }
 
 /* Public / Standalone page helpers (used on Home, Accept Invite, Error pages) */
 .es-public-header {
-  background-color: #043873;
+  background-color: var(--es-public-header-bg, #043873);
   color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(167, 206, 252, 0.16);
 }
 
 .es-public-header-inner {
@@ -93,7 +94,7 @@ textarea:focus-visible {
   width: 34px;
   height: 34px;
   border-radius: 8px;
-  background-color: #012b5b;
+  background-color: var(--es-brand-navy-dark, #012b5b);
   border: 1px solid rgba(167, 206, 252, 0.3);
   color: #4f9cf9;
   display: inline-flex;

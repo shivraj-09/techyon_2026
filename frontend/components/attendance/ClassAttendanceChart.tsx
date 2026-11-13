@@ -35,10 +35,10 @@ export function ClassAttendanceChart() {
           const isGood = item.percentage >= 95;
           const isModerate = item.percentage >= 91 && item.percentage < 95;
           const barColor = isGood
-            ? "#16a34a"
+            ? "var(--es-chart-3)"
             : isModerate
-              ? "#d97706"
-              : "#dc2626";
+              ? "var(--es-chart-4)"
+              : "var(--es-chart-5)";
 
           return (
             <div

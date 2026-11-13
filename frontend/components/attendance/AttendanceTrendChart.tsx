@@ -126,8 +126,8 @@ export function AttendanceTrendChart() {
                 x2="0"
                 y2="1"
               >
-                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--es-chart-1)" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="var(--es-chart-1)" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -140,7 +140,7 @@ export function AttendanceTrendChart() {
                     y1={y}
                     x2={width - padRight}
                     y2={y}
-                    stroke="#e2e8f0"
+                    stroke="var(--es-chart-grid)"
                     strokeDasharray="3 3"
                     strokeWidth="1"
                   />
@@ -149,7 +149,7 @@ export function AttendanceTrendChart() {
                     y={y + 4}
                     textAnchor="end"
                     fontSize="11"
-                    fill="#64748b"
+                    fill="var(--es-chart-axis)"
                   >
                     {tick}%
                   </text>
@@ -162,7 +162,7 @@ export function AttendanceTrendChart() {
             <path
               d={linePath}
               fill="none"
-              stroke="#0284c7"
+              stroke="var(--es-chart-1)"
               strokeWidth="2.3"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -190,7 +190,7 @@ export function AttendanceTrendChart() {
                       y1={padTop}
                       x2={cx}
                       y2={padTop + plotHeight}
-                      stroke="#bae6fd"
+                      stroke="var(--es-chart-guide)"
                       strokeWidth="1.5"
                     />
                   )}
@@ -199,8 +199,8 @@ export function AttendanceTrendChart() {
                     cx={cx}
                     cy={cy}
                     r={isHovered ? 5 : 3}
-                    fill="#ffffff"
-                    stroke="#0284c7"
+                    fill="var(--es-chart-dot-fill)"
+                    stroke="var(--es-chart-1)"
                     strokeWidth={isHovered ? 2.8 : 2}
                   />
                   {showLabel && (
@@ -209,7 +209,7 @@ export function AttendanceTrendChart() {
                       y={height - 10}
                       textAnchor="middle"
                       fontSize="10.5"
-                      fill="#64748b"
+                      fill="var(--es-chart-axis)"
                     >
                       {pt.dayLabel}
                     </text>

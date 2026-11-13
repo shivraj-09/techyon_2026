@@ -28,7 +28,7 @@ export function AttendanceStats({
         bg: "var(--es-success-bg)",
         border: "var(--es-success-border)",
         color: "var(--es-success)",
-        badgeBg: "#dcfce7",
+        badgeBg: "var(--es-success-badge-bg)",
       };
     }
     if (status === "absent") {
@@ -37,7 +37,7 @@ export function AttendanceStats({
         bg: "var(--es-danger-bg)",
         border: "var(--es-danger-border)",
         color: "var(--es-danger)",
-        badgeBg: "#fee2e2",
+        badgeBg: "var(--es-danger-badge-bg)",
       };
     }
     if (status === "late") {
@@ -46,7 +46,7 @@ export function AttendanceStats({
         bg: "var(--es-warning-bg)",
         border: "var(--es-warning-border)",
         color: "var(--es-warning)",
-        badgeBg: "#fef3c7",
+        badgeBg: "var(--es-warning-badge-bg)",
       };
     }
     return {
@@ -54,7 +54,7 @@ export function AttendanceStats({
       bg: "var(--es-primary-subtle)",
       border: "var(--es-primary-border)",
       color: "var(--es-primary)",
-      badgeBg: "#e0f2fe",
+      badgeBg: "var(--es-info-badge-bg)",
     };
   }
 

@@ -201,8 +201,8 @@ export function ChildAttendanceSummary({
               >
                 <defs>
                   <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0284c7" stopOpacity="0.18" />
-                    <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+                    <stop offset="0%" stopColor="var(--es-chart-1)" stopOpacity="0.22" />
+                    <stop offset="100%" stopColor="var(--es-chart-1)" stopOpacity="0.0" />
                   </linearGradient>
                 </defs>
 
@@ -215,7 +215,7 @@ export function ChildAttendanceSummary({
                         y1={y}
                         x2={width - padRight}
                         y2={y}
-                        stroke="#e2e8f0"
+                        stroke="var(--es-chart-grid)"
                         strokeDasharray="3 3"
                         strokeWidth="1"
                       />
@@ -224,7 +224,7 @@ export function ChildAttendanceSummary({
                         y={y + 4}
                         textAnchor="end"
                         fontSize="11"
-                        fill="#64748b"
+                        fill="var(--es-chart-axis)"
                       >
                         {tick}%
                       </text>
@@ -238,7 +238,7 @@ export function ChildAttendanceSummary({
                   <path
                     d={linePath}
                     fill="none"
-                    stroke="#0284c7"
+                    stroke="var(--es-chart-1)"
                     strokeWidth="2.4"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -267,7 +267,7 @@ export function ChildAttendanceSummary({
                           y1={padTop}
                           x2={cx}
                           y2={padTop + plotHeight}
-                          stroke="#bae6fd"
+                          stroke="var(--es-chart-guide)"
                           strokeWidth="1.5"
                         />
                       )}
@@ -276,8 +276,8 @@ export function ChildAttendanceSummary({
                         cx={cx}
                         cy={cy}
                         r={isHovered ? 5 : 3.5}
-                        fill="#ffffff"
-                        stroke="#0284c7"
+                        fill="var(--es-chart-dot-fill)"
+                        stroke="var(--es-chart-1)"
                         strokeWidth={isHovered ? 2.8 : 2}
                       />
                       {showLabel && (
@@ -286,7 +286,7 @@ export function ChildAttendanceSummary({
                           y={height - 10}
                           textAnchor="middle"
                           fontSize="10"
-                          fill="#64748b"
+                          fill="var(--es-chart-axis)"
                         >
                           {pt.day}
                         </text>

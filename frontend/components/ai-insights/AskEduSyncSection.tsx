@@ -281,7 +281,9 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
                         backgroundColor: isUser
                           ? "var(--es-primary)"
                           : "var(--es-bg-surface)",
-                        color: isUser ? "#ffffff" : "var(--es-text-primary)",
+                        color: isUser
+                          ? "var(--es-primary-foreground)"
+                          : "var(--es-text-primary)",
                         border: isUser
                           ? "1px solid var(--es-primary)"
                           : msg.isLimitation

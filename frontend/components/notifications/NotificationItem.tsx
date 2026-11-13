@@ -129,7 +129,7 @@ export function NotificationItem({
                   width: 8,
                   height: 8,
                   borderRadius: "9999px",
-                  backgroundColor: "#2563eb",
+                  backgroundColor: "var(--es-primary)",
                   display: "inline-block",
                   flexShrink: 0,
                 }}

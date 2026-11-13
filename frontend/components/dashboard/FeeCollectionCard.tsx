@@ -36,14 +36,14 @@ export function FeeCollectionCard() {
           <span className="es-legend-item">
             <span
               className="es-legend-swatch"
-              style={{ backgroundColor: "#0284c7" }}
+              style={{ backgroundColor: "var(--es-chart-1)" }}
             />
             Collected
           </span>
           <span className="es-legend-item">
             <span
               className="es-legend-swatch"
-              style={{ backgroundColor: "#cbd5e1" }}
+              style={{ backgroundColor: "var(--es-chart-2)" }}
             />
             Pending
           </span>
@@ -179,7 +179,9 @@ export function FeeCollectionCard() {
                       style={{
                         width: "14px",
                         height: `${collectedHeightPct}%`,
-                        backgroundColor: isSelected ? "#0369a1" : "#0284c7",
+                        backgroundColor: isSelected
+                          ? "var(--es-chart-1-active)"
+                          : "var(--es-chart-1)",
                         borderRadius: "4px 4px 0 0",
                         transition: "height 200ms ease, background-color 150ms ease",
                       }}
@@ -190,7 +192,9 @@ export function FeeCollectionCard() {
                       style={{
                         width: "10px",
                         height: `${pendingHeightPct}%`,
-                        backgroundColor: isSelected ? "#94a3b8" : "#cbd5e1",
+                        backgroundColor: isSelected
+                          ? "var(--es-chart-2-active)"
+                          : "var(--es-chart-2)",
                         borderRadius: "4px 4px 0 0",
                         transition: "height 200ms ease, background-color 150ms ease",
                       }}
