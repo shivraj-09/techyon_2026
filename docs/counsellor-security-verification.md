@@ -39,7 +39,7 @@ Use separate test users for each role and at least two schools. Set the request 
 | Case creation | Unassigned counsellor / unaccepted referral | Denied |
 | Case and notes | Assigned counsellor | Can read and append notes while case is open |\n| Case status | Assigned counsellor | open -> in_progress/closed; in_progress -> closed |\n| Case status | Any actor | Cannot reopen a closed case or change status for another counsellor's case |
 | Case and notes | Teacher, admin, other counsellor | Cannot read confidential notes |
-| Session/notice | Counsellor | Can manage own school content |
+| Session/notice | Creating counsellor | Can manage own school content |\n| Session lifecycle | Creator | draft -> published/cancelled; published -> cancelled/completed; terminal states cannot be republished |\n| Notice lifecycle | Creator | draft -> published/cancelled; published -> cancelled; cancelled is terminal |
 | Session/notice | Parent/teacher | Can read only published content addressed to their role |
 | Student Voice link | School admin | Can create and revoke links in own school |
 | Student Voice conversation | Linked student | Can create and read own pseudonymous conversation |
@@ -61,7 +61,7 @@ Apply the existing base migrations first, then the counsellor migrations in file
 4. `202611140004_create_counselling_sessions_notices.sql`
 5. `202611140005_create_student_voice.sql`
 6. `202611140006_enforce_counsellor_workflow_transitions.sql`
-7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`
+7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`
 
 The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
@@ -74,6 +74,6 @@ The enum addition in migration 001 must commit before migrations that cast/use t
 - The local database is reset and the full migration sequence reapplied cleanly.
 - Record the exact commit SHA and test output before calling the module database-verified.
 
-## Current status
+## Known audience limitation\n\nThe schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.\n\n## Current status
 
 Static review and API schema/authorization unit tests exist. Database-backed RLS and trigger tests have **not** yet been run. No hosted production migrations have been applied.
