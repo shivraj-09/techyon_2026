@@ -9,7 +9,8 @@ INSERT INTO auth.users (id) VALUES
  ('20000000-0000-4000-8000-000000000004'),
  ('20000000-0000-4000-8000-000000000005'),
  ('20000000-0000-4000-8000-000000000006'),
- ('20000000-0000-4000-8000-000000000007');
+ ('20000000-0000-4000-8000-000000000007'),
+ ('20000000-0000-4000-8000-000000000008');
 
 INSERT INTO public.profiles (id, full_name, email) VALUES
  ('20000000-0000-4000-8000-000000000001', 'Teacher One', 'teacher1@example.test'),
@@ -18,7 +19,8 @@ INSERT INTO public.profiles (id, full_name, email) VALUES
  ('20000000-0000-4000-8000-000000000004', 'Counsellor Two', 'counsellor2@example.test'),
  ('20000000-0000-4000-8000-000000000005', 'School Admin', 'admin@example.test'),
  ('20000000-0000-4000-8000-000000000006', 'Linked Student', 'student@example.test'),
- ('20000000-0000-4000-8000-000000000007', 'Teacher Other', 'teacher-other@example.test');
+ ('20000000-0000-4000-8000-000000000007', 'Teacher Other', 'teacher-other@example.test'),
+ ('20000000-0000-4000-8000-000000000008', 'Counsellor Three', 'counsellor3@example.test');
 
 INSERT INTO public.schools (id, name, code) VALUES
  ('10000000-0000-4000-8000-000000000001', 'School One', 'RLS-SCHOOL-ONE'),
@@ -29,6 +31,7 @@ INSERT INTO public.school_memberships (school_id, user_id, role, status) VALUES
  ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000007', 'teacher', 'active'),
  ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003', 'counsellor', 'active'),
  ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000005', 'admin', 'active'),
+ ('10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000008', 'counsellor', 'active'),
  ('10000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', 'teacher', 'active'),
  ('10000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000004', 'counsellor', 'active');
 
@@ -160,7 +163,7 @@ RESET ROLE;
 -- After approval, only the assigned counsellor receives minimal identity fields,
 -- and the reveal is audited in the same transaction.
 SET LOCAL ROLE authenticated;
-SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000008', true);
 DO $$
 DECLARE
   v_request_id uuid;
