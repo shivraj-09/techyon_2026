@@ -97,25 +97,33 @@ export function AppLayout({
   const currentProfile = ROLE_NAVIGATION[role];
   const resolvedEmail = customEmail || currentProfile.defaultUserEmail;
   const homeHref =
-    role === "parent"
+    role === "counsellor"
+      ? "/counsellor/dashboard"
+      : role === "parent"
       ? "/parent/dashboard"
       : role === "teacher"
         ? "/teacher/dashboard"
         : "/dashboard";
   const settingsHref =
-    role === "parent"
+    role === "counsellor"
+      ? "/counsellor/dashboard"
+      : role === "parent"
       ? "/parent/profile"
       : role === "teacher"
         ? "/teacher/profile"
         : "/dashboard/settings";
   const settingsLabel =
-    role === "parent"
+    role === "counsellor"
+      ? "Counsellor Workspace"
+      : role === "parent"
       ? "Parent Profile"
       : role === "teacher"
         ? "Teacher Profile"
         : "Workspace Settings";
   const notificationsHref =
-    role === "parent"
+    role === "counsellor"
+      ? "/counsellor/dashboard#student-voice"
+      : role === "parent"
       ? "/parent/notifications"
       : role === "teacher"
         ? "/teacher/notifications"
