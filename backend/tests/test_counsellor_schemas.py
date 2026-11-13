@@ -747,7 +747,7 @@ class CanonicalSchemaSnapshotTests(TestCase):
             self.assertIn(f"alter table public.{table} enable row level security", self.initial)
 
     def test_snapshot_is_schema_only_and_contains_no_seed_rows(self):
-        self.assertNotRegex(self.initial, r"\\binsert\\s+into\\b")
+        self.assertNotRegex(self.initial, r"\binsert\s+into\b")
         self.assertNotIn("copy ", self.initial)
         self.assertIn("create policy", self.initial)
         self.assertIn("with (security_invoker = true)", self.initial)
