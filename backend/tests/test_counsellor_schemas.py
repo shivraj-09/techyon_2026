@@ -396,6 +396,13 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("student_voice_meetings_student_select", sql)
         self.assertIn("student_voice_meetings_student_insert", sql)
 
+    def test_student_rls_helpers_reject_dual_role_counsellor_accounts(self):
+        sql = self.student_access.lower()
+        self.assertGreaterEqual(sql.count("and not exists ("), 2)
+        self.assertIn("m.role = 'counsellor'::public.membership_role", sql)
+        self.assertIn("m.status = 'active'::public.membership_status", sql)
+        self.assertIn("student_voice_student_can_message_conversation", sql)
+
     def test_identity_reveal_requires_assigned_counsellor_and_active_link(self):
         sql = self.identity_reveal.lower()
         self.assertIn("l.status = 'active'", sql)
