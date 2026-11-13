@@ -731,6 +731,8 @@ async def send_student_voice_message(
             )
             if assignment.status_code != 200:
                 raise HTTPException(status_code=409, detail="Could not assign conversation to this counsellor")
+            if not _rows(assignment):
+                raise HTTPException(status_code=409, detail="Conversation was assigned to another counsellor; refresh and try again")
         sender_kind = "counsellor"
 
     response = await _request(
@@ -855,6 +857,8 @@ async def review_student_voice_meeting_request(
         )
         if assignment.status_code != 200:
             raise HTTPException(status_code=409, detail="Could not assign conversation to this counsellor")
+        if not _rows(assignment):
+            raise HTTPException(status_code=409, detail="Conversation was assigned to another counsellor; refresh and try again")
     response = await _request(
         "student_voice_meeting_requests", "PATCH", credentials,
         params={
