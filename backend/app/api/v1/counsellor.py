@@ -169,6 +169,10 @@ async def list_referrals(
         "limit": str(limit),
         "offset": str(offset),
     }
+    # Teachers must only see referrals they personally submitted. Counsellors
+    # retain the school-wide inbox, with assignment enforced on write operations.
+    if "counsellor" not in school_roles:
+        params["submitted_by"] = f"eq.{current_user['id']}"
     if referral_status:
         params["status"] = f"eq.{referral_status}"
     response = await _request("counsellor_referrals", "GET", credentials, params=params)
