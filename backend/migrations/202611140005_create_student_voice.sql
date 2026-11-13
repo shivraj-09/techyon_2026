@@ -165,7 +165,8 @@ using (
     )
 )
 with check (
-    exists (
+    (assigned_counsellor_id is null or assigned_counsellor_id = (select auth.uid()))
+    and exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_conversations.school_id
           and m.user_id = (select auth.uid())
