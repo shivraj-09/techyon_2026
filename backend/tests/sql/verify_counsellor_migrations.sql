@@ -197,7 +197,7 @@ BEGIN
     SET status = 'active'
     WHERE id = '30000000-0000-0000-0000-000000000001';
     RAISE EXCEPTION 'Revoked Student Voice link was unexpectedly reactivated';
-  EXCEPTION WHEN insufficient_privilege THEN
+  EXCEPTION WHEN check_violation THEN
     NULL;
   END;
-END $$;
+END $;
