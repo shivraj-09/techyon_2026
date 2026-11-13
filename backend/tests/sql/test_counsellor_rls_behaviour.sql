@@ -41,6 +41,8 @@ INSERT INTO public.students (id, school_id, admission_no, first_name) VALUES
  ('40000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'RLS-001', 'Student One'),
  ('40000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'RLS-002', 'Student Two'),
  ('40000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000002', 'RLS-003', 'Student Three');
+INSERT INTO public.students (id, school_id, admission_no, first_name) VALUES
+ ('40000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'RLS-004', 'Dual Role Account');
 
 INSERT INTO public.class_teacher_assignments (school_id, class_id, teacher_user_id) VALUES
  ('10000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001'),
@@ -63,11 +65,19 @@ INSERT INTO public.student_voice_student_links
  (id, school_id, student_id, student_user_id, linked_by)
 VALUES
  ('60000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000005');
+INSERT INTO public.student_voice_student_links
+ (id, school_id, student_id, student_user_id, linked_by)
+VALUES
+ ('60000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000005');
 
 INSERT INTO public.student_voice_conversations
  (id, school_id, student_user_id, public_ref)
 VALUES
  ('70000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000006', 'SV-RLS-0001');
+INSERT INTO public.student_voice_conversations
+ (id, school_id, student_user_id, assigned_counsellor_id, public_ref)
+VALUES
+ ('70000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000004', 'SV-RLS-DUAL');
 
 INSERT INTO public.student_voice_messages
  (school_id, conversation_id, sender_kind, sender_user_id, body)
@@ -120,6 +130,18 @@ BEGIN
     RAISE EXCEPTION 'Cross-school counsellor isolation failed';
   END IF;
 END $$;
+RESET ROLE;
+
+-- A counsellor account that also has a student link must not fall back to student access.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
+DO $
+BEGIN
+  IF (SELECT count(*) FROM public.student_voice_conversations
+      WHERE id = '70000000-0000-4000-8000-000000000002') <> 0 THEN
+    RAISE EXCEPTION 'Dual-role counsellor account must not access Student Voice as a student';
+  END IF;
+END $;
 RESET ROLE;
 
 -- Linked student can read their own conversation and message while the link is active.
