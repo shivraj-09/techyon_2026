@@ -413,8 +413,8 @@ BEGIN
   FROM public.notifications
   WHERE related_announcement_id = v_announcement_id;
 
-  IF v_notification_count <> 3 THEN
-    RAISE EXCEPTION 'Announcement notification trigger did not fan out to all expected active members (got %)', v_notification_count;
+  IF v_notification_count <> 4 THEN
+    RAISE EXCEPTION 'Announcement notification trigger did not fan out to all four expected active members (got %)', v_notification_count;
   END IF;
 END $$;
 
