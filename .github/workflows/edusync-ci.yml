@@ -74,18 +74,36 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes postgresql-client
-      - name: Bootstrap synthetic baseline schema
+      - name: Bootstrap Supabase auth scaffolding
         env:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f backend/tests/sql/bootstrap_counsellor_migrations.sql
+      - name: Apply recovered canonical baseline migrations
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for migration in backend/schema_snapshots/20261113*.sql; do
+            echo "Applying canonical baseline $migration"
+            psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Apply existing backend migrations after the baseline
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for migration in backend/migrations/20261113*.sql; do
+            echo "Applying backend migration $migration"
+            psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f "$migration"
+          done
       - name: Apply counsellor migrations in order
         env:
           PGPASSWORD: postgres
         run: |
           set -euo pipefail
           for migration in backend/migrations/20261114*.sql; do
-            echo "Applying $migration"
+            echo "Applying counsellor migration $migration"
             psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f "$migration"
           done
       - name: Assert migrated schema, RLS and lifecycle triggers
