@@ -268,4 +268,46 @@ BEGIN
 END $$;
 RESET ROLE;
 
+
+-- Trigger functions must not be callable as public RPCs after hardening.
+DO $
+BEGIN
+  IF has_function_privilege('anon', 'public.create_announcement_notifications()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.create_announcement_notifications()', 'EXECUTE')
+     OR has_function_privilege('anon', 'public.sync_fee_invoice_status()', 'EXECUTE')
+     OR has_function_privilege('authenticated', 'public.sync_fee_invoice_status()', 'EXECUTE') THEN
+    RAISE EXCEPTION 'Trigger-only SECURITY DEFINER functions remain directly executable by client roles';
+  END IF;
+END $;
+
+-- Revoking direct EXECUTE must not break trigger invocation by the database.
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000005', true);
+INSERT INTO public.announcements
+  (school_id, title, body, audience, created_by)
+VALUES
+  ('10000000-0000-4000-8000-000000000001',
+   'Trigger permission regression',
+   'This announcement verifies the notification trigger still runs.',
+   'school',
+   auth.uid());
+RESET ROLE;
+DO $
+DECLARE
+  v_announcement_id uuid;
+  v_notification_count integer;
+BEGIN
+  SELECT id INTO v_announcement_id
+  FROM public.announcements
+  WHERE title = 'Trigger permission regression';
+
+  SELECT count(*) INTO v_notification_count
+  FROM public.notifications
+  WHERE related_announcement_id = v_announcement_id;
+
+  IF v_notification_count <> 3 THEN
+    RAISE EXCEPTION 'Announcement notification trigger did not fan out to all expected active members (got %)', v_notification_count;
+  END IF;
+END $;
+
 ROLLBACK;
