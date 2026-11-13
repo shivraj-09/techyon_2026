@@ -37,13 +37,12 @@ export default function TeacherReferralsPage() {
 
   const request = useCallback(async (path: string, init: RequestInit = {}) => {
     if (!token) throw new Error("Your session is not ready. Sign in again.");
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    if (init.body) headers.set("Content-Type", "application/json");
     const response = await fetch(`${API}/api/v1${path}`, {
       ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
+      headers,
       cache: "no-store",
     });
     const data = await response.json().catch(() => ({}));
