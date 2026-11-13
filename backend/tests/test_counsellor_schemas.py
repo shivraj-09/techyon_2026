@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from unittest import TestCase
+from unittest import IsolatedAsyncioTestCase, TestCase
 
 from pydantic import ValidationError
 
@@ -96,7 +96,7 @@ class StudentVoiceSchemaTests(TestCase):
             StudentVoiceMeetingReview(status="cancelled")
 
 
-class CounsellorRoleDependencyTests(__import__("unittest").IsolatedAsyncioTestCase):
+class CounsellorRoleDependencyTests(IsolatedAsyncioTestCase):
     async def test_teacher_is_allowed_when_role_is_explicitly_permitted(self):
         from app.core.authorization import require_school_roles
 
