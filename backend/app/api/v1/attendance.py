@@ -59,6 +59,53 @@ def _parse_rows(response: httpx.Response, allowed=(200,)) -> list[dict]:
     return data
 
 
+@router.get("/classes/{class_id}/roster")
+async def get_class_roster(
+    school_id: UUID,
+    class_id: UUID,
+    _staff: dict = Depends(require_school_roles("admin", "teacher")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Return active enrolled students visible to this staff member under RLS."""
+    class_rows = _parse_rows(await _request(
+        "classes", "GET", credentials,
+        params={"select": "id", "id": f"eq.{class_id}", "school_id": f"eq.{school_id}"},
+    ))
+    if not class_rows:
+        raise HTTPException(status_code=404, detail="Class not found in this school")
+
+    enrollment_rows = _parse_rows(await _request(
+        "student_enrollments", "GET", credentials,
+        params={
+            "select": "student_id,roll_number",
+            "school_id": f"eq.{school_id}",
+            "class_id": f"eq.{class_id}",
+            "status": "eq.active",
+            "order": "roll_number.asc",
+        },
+    ))
+    if not enrollment_rows:
+        return {"success": True, "students": []}
+
+    student_ids = [row["student_id"] for row in enrollment_rows]
+    student_rows = _parse_rows(await _request(
+        "students", "GET", credentials,
+        params={
+            "select": "id,admission_no,first_name,last_name,status",
+            "school_id": f"eq.{school_id}",
+            "id": f"in.({','.join(student_ids)})",
+            "status": "eq.active",
+        },
+    ))
+    students_by_id = {row["id"]: row for row in student_rows}
+    roster = [
+        {**students_by_id[row["student_id"]], "roll_number": row["roll_number"]}
+        for row in enrollment_rows
+        if row["student_id"] in students_by_id
+    ]
+    return {"success": True, "students": roster}
+
+
 @router.post("/classes/{class_id}/attendance", status_code=status.HTTP_201_CREATED)
 async def mark_class_attendance(
     school_id: UUID,
