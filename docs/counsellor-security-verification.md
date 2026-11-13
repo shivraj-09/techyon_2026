@@ -37,7 +37,7 @@ Use separate test users for each role and at least two schools. Set the request 
 | Referral assignment | Second counsellor | Cannot take over an already assigned referral |
 | Case creation | Assigned counsellor, accepted referral | Can create one case |
 | Case creation | Unassigned counsellor / unaccepted referral | Denied |
-| Case and notes | Assigned counsellor | Can read and append notes while case is open |
+| Case and notes | Assigned counsellor | Can read and append notes while case is open |\n| Case status | Assigned counsellor | open -> in_progress/closed; in_progress -> closed |\n| Case status | Any actor | Cannot reopen a closed case or change status for another counsellor's case |
 | Case and notes | Teacher, admin, other counsellor | Cannot read confidential notes |
 | Session/notice | Counsellor | Can manage own school content |
 | Session/notice | Parent/teacher | Can read only published content addressed to their role |
@@ -61,7 +61,7 @@ Apply the existing base migrations first, then the counsellor migrations in file
 4. `202611140004_create_counselling_sessions_notices.sql`
 5. `202611140005_create_student_voice.sql`
 6. `202611140006_enforce_counsellor_workflow_transitions.sql`
-7. `202611140007_guard_student_voice_conversation_assignment.sql`
+7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`
 
 The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
