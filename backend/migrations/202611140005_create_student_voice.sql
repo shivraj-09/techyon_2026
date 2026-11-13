@@ -239,7 +239,8 @@ drop policy if exists student_voice_meetings_counsellor_select on public.student
 create policy student_voice_meetings_counsellor_select on public.student_voice_meeting_requests
 for select to authenticated
 using (
-    exists (
+    status = 'pending'
+    and exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_meeting_requests.school_id
           and m.user_id = (select auth.uid())
@@ -363,7 +364,16 @@ with check (
           and m.status = 'active'::public.membership_status
     )
     and exists (
-        select 1 from public.student_voice_meeting_requests mr
+        select 1
+        from public.student_voice_meeting_requests mr
+        join public.student_voice_conversations c
+          on c.school_id = mr.school_id
+         and c.id = mr.conversation_id
+        join public.student_voice_student_links l
+          on l.school_id = c.school_id
+         and l.student_user_id = c.student_user_id
+         and l.student_id = student_voice_identity_reveal_audit.student_id
+         and l.status = 'active'
         where mr.id = student_voice_identity_reveal_audit.meeting_request_id
           and mr.school_id = student_voice_identity_reveal_audit.school_id
           and mr.status = 'approved'
