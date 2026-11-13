@@ -320,6 +320,49 @@ class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
         request.assert_awaited_once()
 
 
+class StudentVoiceStudentAccessTests(IsolatedAsyncioTestCase):
+    async def test_student_access_requires_active_link(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        with patch.object(counsellor, "_request", new=AsyncMock(return_value=httpx.Response(200, json=[]))) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor._require_student_voice_student(
+                    school_id, {"id": "student-user"}, credentials
+                )
+
+        self.assertEqual(raised.exception.status_code, 403)
+        request.assert_awaited_once()
+
+    async def test_student_access_rejects_dual_role_account(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        active_link = httpx.Response(200, json=[{"id": "link-1"}])
+        memberships = [{"school_id": str(school_id), "role": "counsellor", "status": "active"}]
+
+        with patch.object(counsellor, "_request", new=AsyncMock(return_value=active_link)) as request, patch.object(
+            counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor._require_student_voice_student(
+                    school_id, {"id": "dual-user"}, credentials
+                )
+
+        self.assertEqual(raised.exception.status_code, 403)
+        request.assert_awaited_once()
+
+
 class StudentVoiceMigrationContractTests(TestCase):
     """Static SQL guardrails; these do not replace PostgreSQL/RLS integration tests."""
 
