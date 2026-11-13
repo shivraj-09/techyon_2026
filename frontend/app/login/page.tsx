@@ -84,7 +84,7 @@ export default function LoginPage() {
 
       const api = (
         process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
-      ).replace(/\\/$/, "");
+      ).replace(/\/$/, "");
       const headers = { Authorization: `Bearer ${accessToken}` };
 
       const meRes = await fetch(`${api}/api/v1/auth/me`, {
