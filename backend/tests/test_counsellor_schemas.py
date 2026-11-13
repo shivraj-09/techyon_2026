@@ -183,3 +183,48 @@ class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(raised.exception.status_code, 409)
         request.assert_awaited_once()
+
+
+
+class StudentVoiceMigrationContractTests(TestCase):
+    """Static SQL guardrails; these do not replace PostgreSQL/RLS integration tests."""
+
+    @classmethod
+    def setUpClass(cls):
+        from pathlib import Path
+
+        migrations = Path(__file__).resolve().parents[1] / "migrations"
+        cls.student_access = (migrations / "202611140011_revoke_student_voice_access_with_link.sql").read_text()
+        cls.identity_reveal = (migrations / "202611140012_preserve_identity_reveal_after_completion.sql").read_text()
+        cls.terminal_revoke = (migrations / "202611140013_make_student_voice_revocation_terminal.sql").read_text()
+
+    def test_student_access_policies_recheck_active_link(self):
+        sql = self.student_access.lower()
+        self.assertGreaterEqual(sql.count("l.status = 'active'"), 4)
+        self.assertIn("student_voice_conversations_student_select", sql)
+        self.assertIn("student_voice_messages_student_read", sql)
+        self.assertIn("student_voice_messages_participant_insert", sql)
+        self.assertIn("student_voice_meetings_student_select", sql)
+        self.assertIn("student_voice_meetings_student_insert", sql)
+
+    def test_identity_reveal_requires_assigned_counsellor_and_active_link(self):
+        sql = self.identity_reveal.lower()
+        self.assertIn("l.status = 'active'", sql)
+        self.assertIn("c.assigned_counsellor_id = (select auth.uid())", sql)
+        self.assertIn("mr.status in ('approved', 'completed')", sql)
+        self.assertIn("for share of l", sql)
+
+    def test_identity_reveal_audits_before_returning_identity(self):
+        sql = self.identity_reveal.lower()
+        audit = sql.index("insert into public.student_voice_identity_reveal_audit")
+        returned = sql.index("return query")
+        self.assertLess(audit, returned)
+        self.assertIn("security definer", sql)
+        self.assertIn("set search_path = ''", sql)
+
+    def test_link_revocation_is_terminal_and_identity_fields_are_immutable(self):
+        sql = self.terminal_revoke.lower()
+        self.assertIn("new.student_user_id is distinct from old.student_user_id", sql)
+        self.assertIn("old.status <> 'active' or new.status <> 'revoked'", sql)
+        self.assertIn("only an active school admin may revoke", sql)
+        self.assertIn("before update on public.student_voice_student_links", sql)
