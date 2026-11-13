@@ -201,6 +201,26 @@ export default function CounsellorDashboardPage() {
     setNotice(`Identity access audited. Student record: ${data.identity.student_id}`);
   }
 
+  async function updateSession(item: SessionRecord, status: string) {
+    await runAction(async () => {
+      await apiFetch(`/schools/${schoolId}/counselling/sessions/${item.id}`, {
+        method: "PATCH", body: JSON.stringify({ status }),
+      });
+      setNotice("Session status updated.");
+      await loadWorkspace(schoolId);
+    });
+  }
+
+  async function updateNotice(item: NoticeRecord, status: string) {
+    await runAction(async () => {
+      await apiFetch(`/schools/${schoolId}/counselling/notices/${item.id}`, {
+        method: "PATCH", body: JSON.stringify({ status }),
+      });
+      setNotice("Notice status updated.");
+      await loadWorkspace(schoolId);
+    });
+  }
+
   async function createSession(event: FormEvent) {
     event.preventDefault();
     await runAction(async () => {
@@ -302,8 +322,8 @@ export default function CounsellorDashboardPage() {
                   <Button type="submit">Save notice draft</Button>
                 </form>
               </div>
-              <h3>Scheduled sessions</h3>{sessions.map((item) => <p key={item.id}>{item.title} · {item.audience} · {item.status} · {new Date(item.starts_at).toLocaleString()}</p>)}
-              <h3>Notices</h3>{notices.map((item) => <p key={item.id}>{item.title} · {item.audience} · {item.status}</p>)}
+              <h3>Scheduled sessions</h3>{sessions.map((item) => <article key={item.id} className="es-list-row"><div><strong>{item.title}</strong><p>{item.audience} · {item.status} · {new Date(item.starts_at).toLocaleString()}</p></div><div className="es-row-actions">{item.status === "draft" && <Button size="sm" onClick={() => void updateSession(item, "published")}>Publish</Button>}{item.status === "published" && <><Button size="sm" variant="secondary" onClick={() => void updateSession(item, "completed")}>Complete</Button><Button size="sm" variant="ghost" onClick={() => void updateSession(item, "cancelled")}>Cancel</Button></>}</div></article>)}
+              <h3>Notices</h3>{notices.map((item) => <article key={item.id} className="es-list-row"><div><strong>{item.title}</strong><p>{item.audience} · {item.status}</p></div><div className="es-row-actions">{item.status === "draft" && <Button size="sm" onClick={() => void updateNotice(item, "published")}>Publish</Button>}{item.status === "published" && <Button size="sm" variant="ghost" onClick={() => void updateNotice(item, "cancelled")}>Cancel</Button>}</div></article>)}
             </section>
 
             <section id="student-voice" className="es-card">
