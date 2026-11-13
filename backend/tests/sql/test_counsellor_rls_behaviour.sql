@@ -157,8 +157,8 @@ END $$;
 RESET ROLE;
 
 -- A linked student who also has an active counsellor membership must not
--- use student-facing access. The counsellor role remains independently valid,
--- so this test checks the student-only predicates and student message path.
+-- use either participant path. The account must be denied as both student
+-- and counsellor until its identity ambiguity is resolved.
 INSERT INTO public.school_memberships (school_id, user_id, role, status)
 VALUES (
  '10000000-0000-4000-8000-000000000001',
@@ -188,6 +188,18 @@ BEGIN
        '70000000-0000-4000-8000-000000000001'
      ) THEN
     RAISE EXCEPTION 'Dual-role account passed student message authorization';
+  END IF;
+  IF public.student_voice_counsellor_can_read_conversation(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001'
+     ) OR public.student_voice_counsellor_can_message_conversation(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001'
+     ) OR public.student_voice_counsellor_can_handle_meeting(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001'
+     ) THEN
+    RAISE EXCEPTION 'Dual-role account passed counsellor participant authorization';
   END IF;
   BEGIN
     INSERT INTO public.student_voice_messages
