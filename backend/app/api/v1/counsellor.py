@@ -142,7 +142,7 @@ async def list_referrals(
         raise HTTPException(status_code=422, detail="Invalid referral status")
 
     params = {
-        "select": "id,school_id,student_id,class_id,submitted_by,category,summary,urgency,status,counsellor_response,assigned_counsellor_id,created_at,updated_at",
+        "select": "id,school_id,student_id,class_id,submitted_by,category,summary,urgency,status,assigned_counsellor_id,created_at,updated_at",
         "school_id": f"eq.{school_id}",
         "order": "created_at.desc",
         "limit": str(limit),
@@ -187,9 +187,6 @@ async def review_referral(
         "status": payload.status,
         "assigned_counsellor_id": current_user["id"],
     }
-    if payload.counsellor_response is not None:
-        changes["counsellor_response"] = payload.counsellor_response
-
     response = await _request(
         "counsellor_referrals",
         "PATCH",
