@@ -85,7 +85,8 @@ export default function LoginPage() {
       const accessToken = authData.session?.access_token;
       if (!accessToken) throw new Error("Sign-in did not return an access token.");
 
-      const api = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000").replace(/\\/$/, "");
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+      const api = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
       const membershipResponse = await fetch(`${api}/api/v1/auth/memberships`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
