@@ -383,7 +383,13 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertGreaterEqual(sql.count("student_voice_owns_active_conversation("), 5)
         self.assertIn("security definer", sql)
         self.assertIn("set search_path = ''", sql)
-        self.assertIn("grant execute on function public.student_voice_owns_active_conversation(uuid, uuid) to authenticated", sql)
+        for helper in (
+            "student_voice_student_can_message_conversation",
+            "student_voice_counsellor_can_read_conversation",
+            "student_voice_counsellor_can_message_conversation",
+        ):
+            self.assertIn(f"create or replace function public.{helper}", sql)
+            self.assertIn(f"grant execute on function public.{helper}(uuid, uuid) to authenticated", sql)
         self.assertIn("student_voice_conversations_student_select", sql)
         self.assertIn("student_voice_messages_student_read", sql)
         self.assertIn("student_voice_messages_participant_insert", sql)
@@ -433,8 +439,7 @@ class StudentVoiceMigrationContractTests(TestCase):
         insert_start = sql.index("create policy student_voice_meetings_student_insert")
         insert_policy = sql[insert_start:]
         self.assertIn("requested_by = (select auth.uid())", insert_policy)
-        self.assertIn("c.status = 'open'", insert_policy)
-        self.assertIn("student_voice_owns_active_conversation(school_id, conversation_id)", insert_policy)
+        self.assertIn("student_voice_student_can_message_conversation(school_id, conversation_id)", insert_policy)
 
     def test_referral_trigger_restricts_status_transitions_and_assignment(self):
         sql = self.workflow_transitions.lower()
