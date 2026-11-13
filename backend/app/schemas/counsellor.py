@@ -48,15 +48,6 @@ class ReferralReviewUpdate(BaseModel):
         "declined",
         "closed",
     ]
-    counsellor_response: str | None = Field(default=None, max_length=2000)
-
-    @field_validator("counsellor_response")
-    @classmethod
-    def normalize_response(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        value = value.strip()
-        return value or None
 
 
 class CaseCreateFromReferral(BaseModel):
