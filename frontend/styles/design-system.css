@@ -2194,3 +2194,51 @@
   outline: 2px solid var(--es-primary);
   outline-offset: 2px;
 }
+
+
+/* Counsellor workspace */
+.es-card {
+  background: var(--es-bg-surface);
+  border: 1px solid var(--es-border);
+  border-radius: var(--es-radius-xl);
+  padding: 20px;
+  box-shadow: var(--es-shadow-xs);
+}
+.es-card h2 { margin: 0 0 8px; font-size: 18px; color: var(--es-text-primary); }
+.es-card h3 { margin: 18px 0 10px; font-size: 14px; color: var(--es-text-primary); }
+.es-muted { color: var(--es-text-muted); font-size: 13px; line-height: 1.55; }
+.es-stat-label { display: block; color: var(--es-text-muted); font-size: 12px; }
+.es-list-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 0;
+  border: 0;
+  border-bottom: 1px solid var(--es-border-subtle);
+  background: transparent;
+  color: var(--es-text-primary);
+  text-align: left;
+}
+.es-list-row p { margin: 7px 0; color: var(--es-text-secondary); font-size: 13px; line-height: 1.5; }
+.es-list-row small { color: var(--es-text-muted); font-size: 11px; }
+.es-row-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.es-form-grid { display: grid; gap: 10px; max-width: 680px; margin-top: 16px; }
+.es-form-grid label { display: grid; gap: 5px; color: var(--es-text-secondary); font-size: 12px; font-weight: 600; }
+.es-form-grid input, .es-form-grid textarea, .es-form-grid select {
+  width: 100%;
+  border: 1px solid var(--es-border-strong);
+  border-radius: var(--es-radius-md);
+  padding: 9px 10px;
+  background: white;
+  color: var(--es-text-primary);
+  font: inherit;
+  font-size: 13px;
+}
+.es-message-list { max-height: 280px; overflow: auto; padding: 10px; border: 1px solid var(--es-border); border-radius: var(--es-radius-md); }
+.es-message-list p { margin: 8px 0; font-size: 13px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .es-list-row { flex-direction: column; }
+  .es-row-actions { justify-content: flex-start; }
+}
