@@ -24,7 +24,10 @@ async def invite_school_member(
     full_name: str,
     role: str,
 ) -> dict:
-    """Invite a teacher/parent and provision their profile + invited membership."""
+    """Invite a teacher, parent, or counsellor and provision app records."""
+    if role not in {"teacher", "parent", "counsellor"}:
+        raise HTTPException(status_code=422, detail="Unsupported school invitation role")
+
     base_url = settings.SUPABASE_URL.rstrip("/")
     headers = _admin_headers()
     timeout = httpx.Timeout(15.0)
