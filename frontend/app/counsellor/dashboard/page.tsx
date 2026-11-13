@@ -198,7 +198,14 @@ export default function CounsellorDashboardPage() {
 
   async function revealIdentity(request: MeetingRequest) {
     const data = await apiFetch(`/schools/${schoolId}/student-voice/meeting-requests/${request.id}/student-identity`);
-    setNotice(`Identity access audited. Student record: ${data.identity.student_id}`);
+    const identity = data.identity;
+    const identitySummary = [
+      identity.student_name,
+      identity.admission_no ? `Admission ${identity.admission_no}` : null,
+      identity.class_name,
+      identity.academic_year,
+    ].filter(Boolean).join(" · ");
+    setNotice(`Identity reveal audited: ${identitySummary || identity.student_id}`);
   }
 
   async function updateSession(item: SessionRecord, status: string) {
