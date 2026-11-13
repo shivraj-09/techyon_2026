@@ -516,6 +516,38 @@ async def list_counselling_notices(
 
 student_voice_router = APIRouter(prefix="/schools/{school_id}/student-voice", tags=["Student Voice"])
 
+async def _require_student_voice_student(
+    school_id: UUID,
+    current_user: dict,
+    credentials: HTTPAuthorizationCredentials,
+) -> None:
+    """Require an active student link and prevent dual-role account ambiguity."""
+    link_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={
+            "select": "id",
+            "school_id": f"eq.{school_id}",
+            "student_user_id": f"eq.{current_user['id']}",
+            "status": "eq.active",
+            "limit": "1",
+        },
+    ))
+    if not link_rows:
+        raise HTTPException(status_code=403, detail="Student Voice is not enabled for this account")
+
+    memberships = await fetch_active_memberships(current_user, credentials)
+    if any(
+        item.get("school_id") == str(school_id)
+        and item.get("role") == "counsellor"
+        and item.get("status") == "active"
+        for item in memberships
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="This account has both student and counsellor access; use a separate account for Student Voice",
+        )
+
+
 
 @student_voice_router.post("/links", status_code=status.HTTP_201_CREATED)
 async def link_student_account(
@@ -599,12 +631,7 @@ async def create_student_voice_conversation(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """Create a pseudonymous conversation for the signed-in, linked student."""
-    link_rows = _rows(await _request(
-        "student_voice_student_links", "GET", credentials,
-        params={"select": "id", "school_id": f"eq.{school_id}", "student_user_id": f"eq.{current_user['id']}", "status": "eq.active", "limit": "1"},
-    ))
-    if not link_rows:
-        raise HTTPException(status_code=403, detail="Student Voice is not enabled for this account")
+    await _require_student_voice_student(school_id, current_user, credentials)
     response = await _request(
         "student_voice_conversations", "POST", credentials,
         params={"select": "id,school_id,public_ref,status,created_at,last_message_at"},
@@ -623,9 +650,11 @@ async def list_my_student_voice_conversations(
     school_id: UUID,
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    current_user: dict = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """Student view: only the caller's pseudonymous conversation references."""
+    await _require_student_voice_student(school_id, current_user, credentials)
     response = await _request(
         "student_voice_conversations", "GET", credentials,
         params={
@@ -781,12 +810,7 @@ async def create_student_voice_meeting_request(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """Student may request an in-person meeting without identity being shown in chat."""
-    link_rows = _rows(await _request(
-        "student_voice_student_links", "GET", credentials,
-        params={"select": "id", "school_id": f"eq.{school_id}", "student_user_id": f"eq.{current_user['id']}", "status": "eq.active", "limit": "1"},
-    ))
-    if not link_rows:
-        raise HTTPException(status_code=403, detail="Student Voice is not enabled for this account")
+    await _require_student_voice_student(school_id, current_user, credentials)
     response = await _request(
         "student_voice_meeting_requests", "POST", credentials,
         params={"select": "id,school_id,conversation_id,preferred_times,student_message,status,created_at"},
@@ -934,9 +958,11 @@ async def reveal_meeting_request_student_identity(
 @student_voice_router.get("/meeting-requests/mine")
 async def list_my_student_voice_meeting_requests(
     school_id: UUID,
+    current_user: dict = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """Student view of their own meeting requests; RLS filters by requester."""
+    await _require_student_voice_student(school_id, current_user, credentials)
     response = await _request(
         "student_voice_meeting_requests", "GET", credentials,
         params={
