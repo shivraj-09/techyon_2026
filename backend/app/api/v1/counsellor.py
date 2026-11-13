@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.core.authorization import fetch_active_memberships, get_active_school_membership, require_school_roles
+from app.core.authorization import fetch_active_memberships, require_school_roles
 from app.core.config import settings
 from app.core.security import bearer_scheme, get_current_user
 from app.schemas.counsellor import (
@@ -712,8 +712,14 @@ async def send_student_voice_message(
             )
         sender_kind = "student"
     else:
-        membership = await get_active_school_membership(school_id, current_user, credentials)
-        if membership.get("role") != "counsellor":
+        memberships = await fetch_active_memberships(current_user, credentials)
+        has_counsellor_role = any(
+            item.get("school_id") == str(school_id)
+            and item.get("role") == "counsellor"
+            and item.get("status") == "active"
+            for item in memberships
+        )
+        if not has_counsellor_role:
             raise HTTPException(status_code=403, detail="Only the student or a school counsellor can send messages")
         conversation_rows = _rows(await _request(
             "student_voice_conversations", "GET", credentials,
