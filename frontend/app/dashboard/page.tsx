@@ -104,6 +104,8 @@ export default function DashboardPage() {
   const [lastName, setLastName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [saving, setSaving] = useState(false);
+  const [enrollingStudentId, setEnrollingStudentId] = useState("");
+  const [enrollmentClassByStudent, setEnrollmentClassByStudent] = useState<Record<string, string>>({});
 
   const activeMembership = useMemo(
     () => memberships.find((membership) => membership.school_id === schoolId),
@@ -242,6 +244,36 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : "Could not create class.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function enrollStudent(studentId: string) {
+    const classId = enrollmentClassByStudent[studentId] || classes[0]?.id;
+    const selectedClass = classes.find((item) => item.id === classId);
+    if (!schoolId || !token || !selectedClass) {
+      setError("Create a class before enrolling students.");
+      return;
+    }
+    setEnrollingStudentId(studentId);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(
+        `/api/v1/schools/${schoolId}/students/${studentId}/enrollments`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            class_id: selectedClass.id,
+            academic_year: selectedClass.academic_year,
+          }),
+        },
+      );
+      setNotice("Student enrolled successfully.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not enroll student.");
+    } finally {
+      setEnrollingStudentId("");
     }
   }
 
@@ -487,10 +519,25 @@ export default function DashboardPage() {
                     {students.length === 0 ? <p className="muted">No student records are available for this school.</p> : (
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                          <thead><tr><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Date of birth</th><th style={{ padding: 10 }}>Status</th></tr></thead>
+                          <thead><tr><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Date of birth</th><th style={{ padding: 10 }}>Status</th>{isAdmin && <th style={{ padding: 10 }}>Enroll in class</th>}</tr></thead>
                           <tbody>{students.map((student) => (
                             <tr key={student.id} style={{ borderTop: "1px solid #e2eaed" }}>
                               <td style={{ padding: 10 }}>{student.admission_no}</td><td style={{ padding: 10 }}>{student.first_name} {student.last_name || ""}</td><td style={{ padding: 10 }}>{student.date_of_birth || "—"}</td><td style={{ padding: 10, textTransform: "capitalize" }}>{student.status}</td>
+                              {isAdmin && <td style={{ padding: 10 }}>
+                                <div className="row" style={{ gap: 6 }}>
+                                  <select
+                                    aria-label={`Class for ${student.first_name}`}
+                                    value={enrollmentClassByStudent[student.id] || classes[0]?.id || ""}
+                                    onChange={(event) => setEnrollmentClassByStudent((previous) => ({ ...previous, [student.id]: event.target.value }))}
+                                    disabled={classes.length === 0}
+                                  >
+                                    {classes.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.academic_year}</option>)}
+                                  </select>
+                                  <button className="btn secondary" onClick={() => void enrollStudent(student.id)} disabled={enrollingStudentId === student.id || classes.length === 0}>
+                                    {enrollingStudentId === student.id ? "Enrolling…" : "Enroll"}
+                                  </button>
+                                </div>
+                              </td>}
                             </tr>
                           ))}</tbody>
                         </table>
