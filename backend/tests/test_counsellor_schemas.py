@@ -289,3 +289,81 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("old.status <> 'active' or new.status <> 'revoked'", sql)
         self.assertIn("only an active school admin may revoke", sql)
         self.assertIn("before update on public.student_voice_student_links", sql)
+
+
+class StudentVoiceAssignmentRaceRouteTests(IsolatedAsyncioTestCase):
+    async def test_first_message_stops_when_another_counsellor_wins_assignment(self):
+        from unittest.mock import AsyncMock, patch
+
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        conversation_id = UUID("00000000-0000-0000-0000-000000000030")
+        user = {"id": "00000000-0000-0000-0000-000000000040"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        no_student_link = httpx.Response(200, json=[])
+        conversation = httpx.Response(200, json=[{
+            "id": str(conversation_id), "status": "open", "assigned_counsellor_id": None
+        }])
+        assignment_lost = httpx.Response(200, json=[])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(
+            side_effect=[no_student_link, conversation, assignment_lost]
+        )) as request, patch.object(
+            counsellor, "get_active_school_membership",
+            new=AsyncMock(return_value={"role": "counsellor", "status": "active"})
+        ):
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.send_student_voice_message(
+                    school_id=school_id,
+                    conversation_id=conversation_id,
+                    payload=StudentVoiceMessageCreate(body="Hello, I can help."),
+                    current_user=user,
+                    credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertEqual(request.await_count, 3)
+        self.assertEqual(request.await_args_list[2].args[:2], ("student_voice_conversations", "PATCH"))
+
+    async def test_meeting_review_stops_when_another_counsellor_wins_assignment(self):
+        from unittest.mock import AsyncMock, patch
+
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        request_id = UUID("00000000-0000-0000-0000-000000000050")
+        conversation_id = UUID("00000000-0000-0000-0000-000000000030")
+        user = {"id": "00000000-0000-0000-0000-000000000040"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        meeting = httpx.Response(200, json=[{
+            "id": str(request_id), "status": "pending", "conversation_id": str(conversation_id)
+        }])
+        conversation = httpx.Response(200, json=[{
+            "id": str(conversation_id), "status": "open", "assigned_counsellor_id": None
+        }])
+        assignment_lost = httpx.Response(200, json=[])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(
+            side_effect=[meeting, conversation, assignment_lost]
+        )) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.review_student_voice_meeting_request(
+                    school_id=school_id,
+                    request_id=request_id,
+                    payload=StudentVoiceMeetingReview(status="approved"),
+                    current_user=user,
+                    _counsellor={"role": "counsellor"},
+                    credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertEqual(request.await_count, 3)
+        self.assertEqual(request.await_args_list[2].args[:2], ("student_voice_conversations", "PATCH"))
+
