@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.core.authorization import require_school_roles
+from app.core.authorization import get_active_school_membership, require_school_roles
 from app.core.config import settings
 from app.core.security import bearer_scheme, get_current_user
 from app.schemas.counsellor import (
@@ -16,6 +16,10 @@ from app.schemas.counsellor import (
     CounsellingSessionCreate,
     ReferralCreate,
     ReferralReviewUpdate,
+    StudentVoiceLinkCreate,
+    StudentVoiceMeetingRequestCreate,
+    StudentVoiceMeetingReview,
+    StudentVoiceMessageCreate,
 )
 
 router = APIRouter(prefix="/schools/{school_id}/counsellor/referrals", tags=["Counsellor"])
@@ -498,3 +502,297 @@ async def list_counselling_notices(
         params["status"] = "eq.published"
     response = await _request("counselling_notices", "GET", credentials, params=params)
     return {"success": True, "notices": _rows(response), "limit": limit, "offset": offset}
+
+
+student_voice_router = APIRouter(prefix="/schools/{school_id}/student-voice", tags=["Student Voice"])
+
+
+@student_voice_router.post("/links", status_code=status.HTTP_201_CREATED)
+async def link_student_account(
+    school_id: UUID,
+    payload: StudentVoiceLinkCreate,
+    current_user: dict = Depends(get_current_user),
+    _admin: dict = Depends(require_school_roles("admin")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """An admin links an existing student record to its authenticated student account."""
+    student_rows = _rows(await _request(
+        "students", "GET", credentials,
+        params={"select": "id", "id": f"eq.{payload.student_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not student_rows:
+        raise HTTPException(status_code=404, detail="Student not found in this school")
+    response = await _request(
+        "student_voice_student_links", "POST", credentials,
+        params={"select": "id,school_id,student_id,student_user_id,status,linked_by,created_at"},
+        payload={
+            "school_id": str(school_id),
+            "student_id": str(payload.student_id),
+            "student_user_id": str(payload.student_user_id),
+            "linked_by": current_user["id"],
+        },
+    )
+    if response.status_code == 409:
+        raise HTTPException(status_code=409, detail="Student or account is already linked")
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not link student account")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Link created but no record was returned")
+    return {"success": True, "link": rows[0]}
+
+
+@student_voice_router.post("/conversations", status_code=status.HTTP_201_CREATED)
+async def create_student_voice_conversation(
+    school_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Create a pseudonymous conversation for the signed-in, linked student."""
+    link_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={"select": "id", "school_id": f"eq.{school_id}", "student_user_id": f"eq.{current_user['id']}", "status": "eq.active", "limit": "1"},
+    ))
+    if not link_rows:
+        raise HTTPException(status_code=403, detail="Student Voice is not enabled for this account")
+    response = await _request(
+        "student_voice_conversations", "POST", credentials,
+        params={"select": "id,school_id,public_ref,status,created_at,last_message_at"},
+        payload={"school_id": str(school_id), "student_user_id": current_user["id"]},
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not start Student Voice conversation")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Conversation created but no record was returned")
+    return {"success": True, "conversation": rows[0]}
+
+
+@student_voice_router.get("/conversations/mine")
+async def list_my_student_voice_conversations(
+    school_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Student view: only the caller's pseudonymous conversation references."""
+    response = await _request(
+        "student_voice_conversations", "GET", credentials,
+        params={
+            "select": "id,school_id,public_ref,status,created_at,last_message_at",
+            "school_id": f"eq.{school_id}",
+            "order": "created_at.desc",
+            "limit": str(limit),
+            "offset": str(offset),
+        },
+    )
+    return {"success": True, "conversations": _rows(response), "limit": limit, "offset": offset}
+
+
+@student_voice_router.get("/conversations/inbox")
+async def list_student_voice_inbox(
+    school_id: UUID,
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Counsellor inbox deliberately omits student account IDs and identity-map fields."""
+    response = await _request(
+        "student_voice_conversations", "GET", credentials,
+        params={
+            "select": "id,school_id,public_ref,status,assigned_counsellor_id,created_at,last_message_at",
+            "school_id": f"eq.{school_id}",
+            "order": "last_message_at.desc.nullslast,created_at.desc",
+            "limit": str(limit),
+            "offset": str(offset),
+        },
+    )
+    return {"success": True, "conversations": _rows(response), "limit": limit, "offset": offset}
+
+
+@student_voice_router.get("/conversations/{conversation_id}/messages")
+async def list_student_voice_messages(
+    school_id: UUID,
+    conversation_id: UUID,
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """RLS limits message reads to the student owner or an active school counsellor."""
+    response = await _request(
+        "student_voice_messages", "GET", credentials,
+        params={
+            "select": "id,school_id,conversation_id,sender_kind,body,created_at,read_at",
+            "school_id": f"eq.{school_id}",
+            "conversation_id": f"eq.{conversation_id}",
+            "order": "created_at.asc",
+            "limit": str(limit),
+            "offset": str(offset),
+        },
+    )
+    return {"success": True, "messages": _rows(response), "limit": limit, "offset": offset}
+
+
+@student_voice_router.post("/conversations/{conversation_id}/messages", status_code=status.HTTP_201_CREATED)
+async def send_student_voice_message(
+    school_id: UUID,
+    conversation_id: UUID,
+    payload: StudentVoiceMessageCreate,
+    current_user: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Determine sender type from verified account linkage or active counsellor membership."""
+    link_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={"select": "id", "school_id": f"eq.{school_id}", "student_user_id": f"eq.{current_user['id']}", "status": "eq.active", "limit": "1"},
+    ))
+    if link_rows:
+        sender_kind = "student"
+    else:
+        membership = await get_active_school_membership(school_id, current_user, credentials)
+        if membership.get("role") != "counsellor":
+            raise HTTPException(status_code=403, detail="Only the student or a school counsellor can send messages")
+        sender_kind = "counsellor"
+
+    response = await _request(
+        "student_voice_messages", "POST", credentials,
+        params={"select": "id,school_id,conversation_id,sender_kind,body,created_at,read_at"},
+        payload={
+            "school_id": str(school_id),
+            "conversation_id": str(conversation_id),
+            "sender_kind": sender_kind,
+            "sender_user_id": current_user["id"],
+            "body": payload.body,
+        },
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not send message")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Message sent but no record was returned")
+    return {"success": True, "message": rows[0]}
+
+
+@student_voice_router.post("/conversations/{conversation_id}/meeting-requests", status_code=status.HTTP_201_CREATED)
+async def create_student_voice_meeting_request(
+    school_id: UUID,
+    conversation_id: UUID,
+    payload: StudentVoiceMeetingRequestCreate,
+    current_user: dict = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Student may request an in-person meeting without identity being shown in chat."""
+    link_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={"select": "id", "school_id": f"eq.{school_id}", "student_user_id": f"eq.{current_user['id']}", "status": "eq.active", "limit": "1"},
+    ))
+    if not link_rows:
+        raise HTTPException(status_code=403, detail="Student Voice is not enabled for this account")
+    response = await _request(
+        "student_voice_meeting_requests", "POST", credentials,
+        params={"select": "id,school_id,conversation_id,preferred_times,student_message,status,created_at"},
+        payload={
+            "school_id": str(school_id),
+            "conversation_id": str(conversation_id),
+            "requested_by": current_user["id"],
+            **payload.model_dump(mode="json"),
+        },
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not submit meeting request")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Meeting request submitted but no record was returned")
+    return {"success": True, "meeting_request": rows[0]}
+
+
+@student_voice_router.get("/meeting-requests")
+async def list_student_voice_meeting_requests(
+    school_id: UUID,
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    response = await _request(
+        "student_voice_meeting_requests", "GET", credentials,
+        params={
+            "select": "id,school_id,conversation_id,requested_by,preferred_times,student_message,status,handled_by,handled_at,created_at",
+            "school_id": f"eq.{school_id}",
+            "order": "created_at.desc",
+        },
+    )
+    return {"success": True, "meeting_requests": _rows(response)}
+
+
+@student_voice_router.patch("/meeting-requests/{request_id}")
+async def review_student_voice_meeting_request(
+    school_id: UUID,
+    request_id: UUID,
+    payload: StudentVoiceMeetingReview,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    response = await _request(
+        "student_voice_meeting_requests", "PATCH", credentials,
+        params={
+            "select": "id,school_id,conversation_id,preferred_times,student_message,status,handled_by,handled_at,created_at",
+            "id": f"eq.{request_id}",
+            "school_id": f"eq.{school_id}",
+            "status": "eq.pending",
+        },
+        payload={
+            "status": payload.status,
+            "handled_by": current_user["id"],
+            "handled_at": datetime.now(timezone.utc).isoformat(),
+        },
+    )
+    if response.status_code not in (200, 204):
+        raise HTTPException(status_code=502, detail="Could not update meeting request")
+    rows = _rows(response, allowed=(200, 204))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Pending meeting request not found")
+    return {"success": True, "meeting_request": rows[0]}
+
+
+@student_voice_router.get("/meeting-requests/{request_id}/student-identity")
+async def reveal_meeting_request_student_identity(
+    school_id: UUID,
+    request_id: UUID,
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Explicit reveal endpoint: identity is returned only after this meeting request is approved."""
+    request_rows = _rows(await _request(
+        "student_voice_meeting_requests", "GET", credentials,
+        params={
+            "select": "id,conversation_id,requested_by,status",
+            "id": f"eq.{request_id}",
+            "school_id": f"eq.{school_id}",
+            "status": "eq.approved",
+            "limit": "1",
+        },
+    ))
+    if not request_rows:
+        raise HTTPException(status_code=404, detail="Approved meeting request not found")
+    meeting = request_rows[0]
+    identity_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={
+            "select": "student_id",
+            "school_id": f"eq.{school_id}",
+            "student_user_id": f"eq.{meeting['requested_by']}",
+            "status": "eq.active",
+            "limit": "1",
+        },
+    ))
+    if not identity_rows:
+        raise HTTPException(status_code=404, detail="Student identity is unavailable")
+    return {
+        "success": True,
+        "identity": {
+            "student_id": identity_rows[0]["student_id"],
+            "meeting_request_id": str(request_id),
+            "conversation_id": meeting["conversation_id"],
+        },
+    }
