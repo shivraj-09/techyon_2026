@@ -10,15 +10,17 @@ app = FastAPI(
     description="Backend API for EduSync",
 )
 
-# The Next.js app and FastAPI run on different origins during local development.
-# Keep this list explicit; add the deployed frontend origin before production.
+# Keep the allowed browser origins explicit and configure the production frontend
+# origin through CORS_ORIGINS in the backend environment.
+allowed_origins = [
+    origin.strip().rstrip("/")
+    for origin in settings.CORS_ORIGINS.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://172.27.176.1:3000",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["Authorization", "Content-Type", "Accept", "apikey"],
