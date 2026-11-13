@@ -8,7 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from app.core.config import settings
 from app.core.security import bearer_scheme, get_current_user
 
-VALID_ROLES = {"admin", "teacher", "parent"}
+VALID_ROLES = {"admin", "teacher", "parent", "counsellor"}
 
 
 async def fetch_active_memberships(
