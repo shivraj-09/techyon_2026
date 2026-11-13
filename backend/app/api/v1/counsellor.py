@@ -1051,6 +1051,10 @@ async def reveal_meeting_request_student_identity(
         "success": True,
         "identity": {
             "student_id": rows[0]["student_id"],
+            "student_name": rows[0]["student_name"],
+            "admission_no": rows[0]["admission_no"],
+            "class_name": rows[0]["class_name"],
+            "academic_year": rows[0]["academic_year"],
             "meeting_request_id": rows[0]["meeting_request_id"],
             "conversation_id": rows[0]["conversation_id"],
             "revealed_at": rows[0]["revealed_at"],
