@@ -66,7 +66,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - `/schools/{school_id}/counselling/cases`: counsellor-only case creation from accepted referrals, case listing/status, and private append-only notes. Implemented in `backend/app/api/v1/counsellor.py`.
 - `/schools/{school_id}/counselling/sessions`: counsellor create/list and `PATCH /sessions/{session_id}` for creator-scoped publish/cancel/complete transitions. `/schools/{school_id}/counselling/notices`: counsellor create/list and `PATCH /notices/{notice_id}` for creator-scoped publish/cancel transitions. Implemented in `backend/app/api/v1/counsellor.py`; session registration/attendance remains pending.
 - `/schools/{school_id}/student-voice/links`: admin links an existing student record to a Supabase Auth user; `PATCH /links/{link_id}/revoke` lets an active school admin revoke that link. Revocation is terminal and enforced by a database trigger. `/schools/{school_id}/student-voice/conversations`: student create/list own; `/inbox`: counsellor pseudonymous inbox.
-- `/schools/{school_id}/student-voice/conversations/{conversation_id}/messages`: student/counsellor read and send. `/meeting-requests`: student request, counsellor review, and explicit identity reveal after approval. Identity reveal is audited before the student record ID is returned. Implemented in `backend/app/api/v1/counsellor.py`; runtime tests and live migration are pending.
+- `/auth/student-voice-access`: returns active student links visible to the authenticated user under RLS. `/schools/{school_id}/student-voice/links`: admin-only link inventory/create/revoke. `/schools/{school_id}/student-voice/conversations/{conversation_id}/messages`: student/counsellor read and send. `/meeting-requests`: student request, counsellor review, and explicit identity reveal after approval. Identity reveal is audited before the student record ID is returned. Implemented in `backend/app/api/v1/counsellor.py`; runtime tests and live migration are pending.
 
 ## Delivery sequence
 1. Audit existing authorization helpers, membership role parsing, guardian/student relationships, class enrollment, and invite flow.
@@ -84,6 +84,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - The latest frontend from dev is preserved on the feature branch; the integration commit uses the current dev tree and overlays the backend feature without replacing the newer UI.
 - Supabase browser auth is restored in frontend/lib/supabase/client.ts. Login verifies the access token and active school membership through FastAPI before routing by the selected membership role.
 - Invitation acceptance exchanges/verifies the Supabase invite token, loads the signed-in user's pending invitations through FastAPI, and activates memberships through the authenticated accept endpoint.
+- Linked students use a separate `/auth/student-voice-access` endpoint (RLS-filtered active account links) and `/student-voice` portal; they do not need a fabricated school-membership role.
 - /counsellor/dashboard provides referral review, confidential case status and private-note creation, session/notice creation and publishing, Student Voice replies, meeting-request review, and explicit audited identity reveal.
 - Client-side role switching was removed; the backend remains the authorization boundary.
 
