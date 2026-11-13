@@ -787,6 +787,32 @@ async def review_student_voice_meeting_request(
     }
     if payload.status not in allowed_transitions.get(current_status, set()):
         raise HTTPException(status_code=409, detail="Invalid meeting request status transition")
+    conversation_rows = _rows(await _request(
+        "student_voice_conversations", "GET", credentials,
+        params={
+            "select": "id,status,assigned_counsellor_id",
+            "id": f"eq.{existing_rows[0]['conversation_id']}",
+            "school_id": f"eq.{school_id}",
+            "limit": "1",
+        },
+    ))
+    if not conversation_rows:
+        raise HTTPException(status_code=404, detail="Student Voice conversation not found")
+    conversation = conversation_rows[0]
+    if conversation.get("assigned_counsellor_id") not in (None, current_user["id"]):
+        raise HTTPException(status_code=409, detail="Conversation is assigned to another counsellor")
+    if conversation.get("assigned_counsellor_id") is None:
+        assignment = await _request(
+            "student_voice_conversations", "PATCH", credentials,
+            params={
+                "id": f"eq.{existing_rows[0]['conversation_id']}",
+                "school_id": f"eq.{school_id}",
+                "assigned_counsellor_id": "is.null",
+            },
+            payload={"assigned_counsellor_id": current_user["id"]},
+        )
+        if assignment.status_code != 200:
+            raise HTTPException(status_code=409, detail="Could not assign conversation to this counsellor")
     response = await _request(
         "student_voice_meeting_requests", "PATCH", credentials,
         params={
