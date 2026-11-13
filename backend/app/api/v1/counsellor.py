@@ -716,7 +716,7 @@ async def list_student_voice_meeting_requests(
     response = await _request(
         "student_voice_meeting_requests", "GET", credentials,
         params={
-            "select": "id,school_id,conversation_id,requested_by,preferred_times,student_message,status,handled_by,handled_at,created_at",
+            "select": "id,school_id,conversation_id,preferred_times,student_message,status,handled_by,handled_at,created_at",
             "school_id": f"eq.{school_id}",
             "order": "created_at.desc",
         },
