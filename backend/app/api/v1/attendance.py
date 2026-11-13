@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 import httpx
@@ -123,7 +124,7 @@ async def mark_class_attendance(
 async def get_class_attendance(
     school_id: UUID,
     class_id: UUID,
-    attendance_date: str = Query(..., description="Date in YYYY-MM-DD format"),
+    attendance_date: date = Query(..., description="Date in YYYY-MM-DD format"),
     _membership: dict = Depends(get_active_school_membership),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
@@ -131,7 +132,7 @@ async def get_class_attendance(
         "select": ATTENDANCE_FIELDS,
         "school_id": f"eq.{school_id}",
         "class_id": f"eq.{class_id}",
-        "attendance_date": f"eq.{attendance_date}",
+        "attendance_date": f"eq.{attendance_date.isoformat()}",
         "order": "created_at.asc",
     }
     response = await _request("attendance_records", "GET", credentials, params=params)
