@@ -1,0 +1,57 @@
+import Link from "next/link";
+export default function HomePage() {
+  return (
+    <main>
+      <header className="topbar">
+        <div className="brand">
+          <span className="mark">E</span>EduSync
+        </div>
+        <Link href="/login">Sign in →</Link>
+      </header>
+      <div className="shell">
+        <section className="hero">
+          <span className="pill">SCHOOL OPERATING SYSTEM</span>
+          <h1>
+            One institution.
+            <br />
+            One connected ecosystem.
+          </h1>
+          <p>
+            Bring school administration, teachers, parents and student
+            information together in one secure workspace.
+          </p>
+          <Link href="/login">
+            <button
+              className="btn"
+              style={{ background: "white", color: "#087e78", marginTop: 12 }}
+            >
+              Open your workspace →
+            </button>
+          </Link>
+        </section>
+        <section className="grid">
+          <article className="stat">
+            <span className="muted">01 / ADMINISTRATION</span>
+            <h2>One school</h2>
+            <p className="muted">
+              Manage people, classes and school operations.
+            </p>
+          </article>
+          <article className="stat">
+            <span className="muted">02 / TEACHERS</span>
+            <h2>Connected teams</h2>
+            <p className="muted">A shared place for classroom workflows.</p>
+          </article>
+          <article className="stat">
+            <span className="muted">03 / FAMILIES</span>
+            <h2>Informed parents</h2>
+            <p className="muted">Keep families connected to school updates.</p>
+          </article>
+        </section>
+        <p className="muted" style={{ textAlign: "center", marginTop: 32 }}>
+          EduSync · Early access prototype
+        </p>
+      </div>
+    </main>
+  );
+}
