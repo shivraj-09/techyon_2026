@@ -27,6 +27,14 @@ as $$
           and c.id = p_conversation_id
           and c.student_user_id = (select auth.uid())
           and l.student_user_id = (select auth.uid())
+          and not exists (
+              select 1
+              from public.school_memberships m
+              where m.school_id = c.school_id
+                and m.user_id = (select auth.uid())
+                and m.role = 'counsellor'::public.membership_role
+                and m.status = 'active'::public.membership_status
+          )
     );
 $$;
 
@@ -52,6 +60,14 @@ as $$
           and c.student_user_id = (select auth.uid())
           and l.student_user_id = (select auth.uid())
           and c.status = 'open'
+          and not exists (
+              select 1
+              from public.school_memberships m
+              where m.school_id = c.school_id
+                and m.user_id = (select auth.uid())
+                and m.role = 'counsellor'::public.membership_role
+                and m.status = 'active'::public.membership_status
+          )
     );
 $$;
 
