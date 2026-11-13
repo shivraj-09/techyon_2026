@@ -2,7 +2,7 @@
 DO $$
 DECLARE
   table_name text;
-  required_tables text[] := ARRAY[
+  policy_required_tables text[] := ARRAY[
     'counsellor_referrals',
     'counselling_cases',
     'counselling_case_notes',
@@ -11,7 +11,9 @@ DECLARE
     'student_voice_student_links',
     'student_voice_conversations',
     'student_voice_messages',
-    'student_voice_meeting_requests',
+    'student_voice_meeting_requests'
+  ];
+  all_feature_tables text[] := policy_required_tables || ARRAY[
     'student_voice_identity_reveal_audit'
   ];
 BEGIN
@@ -26,7 +28,7 @@ BEGIN
     RAISE EXCEPTION 'membership_role.counsellor enum value was not installed';
   END IF;
 
-  FOREACH table_name IN ARRAY required_tables LOOP
+  FOREACH table_name IN ARRAY all_feature_tables LOOP
     IF to_regclass(format('public.%I', table_name)) IS NULL THEN
       RAISE EXCEPTION 'Required feature table public.% is missing', table_name;
     END IF;
@@ -36,6 +38,10 @@ BEGIN
     ) THEN
       RAISE EXCEPTION 'RLS is not enabled on public.%', table_name;
     END IF;
+  END LOOP;
+
+  -- All participant-facing tables need explicit policies.
+  FOREACH table_name IN ARRAY policy_required_tables LOOP
     IF NOT EXISTS (
       SELECT 1 FROM pg_policies
       WHERE schemaname = 'public' AND tablename = table_name
@@ -43,6 +49,22 @@ BEGIN
       RAISE EXCEPTION 'No RLS policy exists for public.%', table_name;
     END IF;
   END LOOP;
+
+  -- Identity reveal audit is intentionally policy-less and inaccessible to
+  -- authenticated users. Its only write path is the SECURITY DEFINER RPC.
+  IF EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'student_voice_identity_reveal_audit'
+  ) THEN
+    RAISE EXCEPTION 'Identity reveal audit must not expose direct RLS policies';
+  END IF;
+  IF has_table_privilege('authenticated', 'public.student_voice_identity_reveal_audit', 'SELECT')
+     OR has_table_privilege('authenticated', 'public.student_voice_identity_reveal_audit', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.student_voice_identity_reveal_audit', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.student_voice_identity_reveal_audit', 'DELETE') THEN
+    RAISE EXCEPTION 'Authenticated users have direct privileges on the identity reveal audit';
+  END IF;
 
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger
