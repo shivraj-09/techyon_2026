@@ -214,6 +214,7 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
+  -- The counsellor path must reject the same dual-role identity as the student path.
   BEGIN
     INSERT INTO public.student_voice_messages
       (school_id, conversation_id, sender_kind, sender_user_id, body)
