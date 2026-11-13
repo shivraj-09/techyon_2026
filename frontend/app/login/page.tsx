@@ -3,7 +3,8 @@
 import { FormEvent, MouseEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+// [DISCONNECTED ENDPOINT CLIENT] Supabase browser client (used for POST /auth/v1/token & POST /auth/v1/recover)
+// import { createClient } from "@/lib/supabase/client";
 import "./login.css";
 
 type RoleId = "student" | "parent" | "teacher" | "admin";
@@ -55,7 +56,10 @@ export default function LoginPage() {
 
   const activeRole = ROLES.find((r) => r.id === selectedRole);
 
-  // Connects to Supabase Auth login + FastAPI Backend verify/memberships endpoints
+  // [DISCONNECTED ENDPOINTS] Previously connected to:
+  // 1. Supabase Auth Sign In: POST /auth/v1/token?grant_type=password (via supabase.auth.signInWithPassword)
+  // 2. FastAPI Verify User:    GET /api/v1/auth/me
+  // 3. FastAPI Memberships:    GET /api/v1/auth/memberships
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
@@ -63,32 +67,33 @@ export default function LoginPage() {
     setBusy(true);
 
     try {
+      /*
       const supabase = createClient();
       const cleanInput = email.trim();
       const credentials = cleanInput.includes("@")
         ? { email: cleanInput, password }
         : { phone: cleanInput, password };
 
-      // 1. Supabase Auth Sign In Endpoint (POST /auth/v1/token?grant_type=password)
+      // ENDPOINT 1: Supabase Auth Sign In (POST /auth/v1/token?grant_type=password)
       const { data: authData, error: signInError } =
         await supabase.auth.signInWithPassword(credentials as any);
 
       if (signInError) throw signInError;
 
-      // 2. FastAPI Backend Verification Endpoint (/api/v1/auth/me & /api/v1/auth/memberships)
+      // ENDPOINT 2 & 3: FastAPI Backend Verification (/api/v1/auth/me & /api/v1/auth/memberships)
       if (authData?.session?.access_token) {
         const api =
           process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
 
         try {
-          // Verify token identity with FastAPI backend
+          // ENDPOINT 2: GET /api/v1/auth/me
           await fetch(`${api}/api/v1/auth/me`, {
             headers: {
               Authorization: `Bearer ${authData.session.access_token}`,
             },
           });
 
-          // Fetch active school memberships
+          // ENDPOINT 3: GET /api/v1/auth/memberships
           const membershipRes = await fetch(`${api}/api/v1/auth/memberships`, {
             headers: {
               Authorization: `Bearer ${authData.session.access_token}`,
@@ -97,13 +102,18 @@ export default function LoginPage() {
 
           if (membershipRes.ok) {
             const membershipData = await membershipRes.json();
-            // Memberships verified and loaded
             console.log("Verified memberships:", membershipData.memberships);
           }
         } catch (backendError) {
-          // If the backend server isn't running yet, user can still proceed into app
           console.warn("Backend auth verification warning:", backendError);
         }
+      }
+      */
+
+      // Offline/Preview mode: store selected email & role locally and go straight to /dashboard
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("edusync_demo_email", email.trim());
+        sessionStorage.setItem("edusync_demo_role", selectedRole || "parent");
       }
 
       router.replace("/dashboard");
@@ -115,7 +125,8 @@ export default function LoginPage() {
     }
   }
 
-  // Connects to Supabase Password Reset Endpoint (POST /auth/v1/recover)
+  // [DISCONNECTED ENDPOINT] Previously connected to:
+  // Supabase Password Reset: POST /auth/v1/recover (via supabase.auth.resetPasswordForEmail)
   async function handleForgotPassword(e: MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     const cleanEmail = email.trim();
@@ -133,7 +144,9 @@ export default function LoginPage() {
     setBusy(true);
 
     try {
+      /*
       const supabase = createClient();
+      // ENDPOINT: Supabase Password Reset (POST /auth/v1/recover)
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         cleanEmail,
         {
@@ -142,9 +155,10 @@ export default function LoginPage() {
       );
 
       if (resetError) throw resetError;
+      */
 
       setSuccess(
-        `Password reset instructions have been sent to ${cleanEmail}. Please check your inbox.`,
+        `[Preview Mode] Password reset instructions would be sent to ${cleanEmail}.`,
       );
     } catch (err) {
       setError(
@@ -373,7 +387,8 @@ export default function LoginPage() {
                     className="login-input"
                     autoComplete="current-password"
                     placeholder="••••••••••••"
-                    required
+                    // [DISCONNECTED FOR UI PREVIEW] Removed `required` so you can click Sign In directly without entering a password
+                    // required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
