@@ -61,7 +61,7 @@ Apply the existing base migrations first, then the counsellor migrations in file
 4. `202611140004_create_counselling_sessions_notices.sql`
 5. `202611140005_create_student_voice.sql`
 6. `202611140006_enforce_counsellor_workflow_transitions.sql`
-7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`\n10. `202611140010_set_session_publication_timestamp.sql`
+7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`\n10. `202611140010_set_session_publication_timestamp.sql`\n11. `202611140011_revoke_student_voice_access_with_link.sql`
 
 The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
@@ -74,6 +74,6 @@ The enum addition in migration 001 must commit before migrations that cast/use t
 - The local database is reset and the full migration sequence reapplied cleanly.
 - Record the exact commit SHA and test output before calling the module database-verified.
 
-## Known audience limitation\n\nThe schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.\n\n## Current status
+## Student Voice link revocation\n\nThe active account-link row is revalidated by student-facing RLS policies for conversation reads, message reads/writes, and meeting-request reads/creation. Revoking a link therefore suspends access to existing Student Voice content as well as preventing new conversations. Counsellor access remains governed by active school membership and conversation assignment. Verify this with DB-backed tests for an active student, then revoke the link and assert that all student-facing reads/writes are denied while the assigned counsellor retains access.\n\n## Known audience limitation\n\nThe schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.\n\n## Current status
 
 Static review and API schema/authorization unit tests exist. Database-backed RLS and trigger tests have **not** yet been run. No hosted production migrations have been applied.
