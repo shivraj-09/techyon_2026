@@ -633,6 +633,24 @@ async def _require_student_voice_student(
 
 
 
+@student_voice_router.get("/links")
+async def list_student_voice_links(
+    school_id: UUID,
+    _admin: dict = Depends(require_school_roles("admin")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Only school admins may inspect the student-to-account link mapping."""
+    response = await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={
+            "select": "id,school_id,student_id,student_user_id,status,linked_by,created_at",
+            "school_id": f"eq.{school_id}",
+            "order": "created_at.desc",
+        },
+    )
+    return {"success": True, "links": _rows(response)}
+
+
 @student_voice_router.post("/links", status_code=status.HTTP_201_CREATED)
 async def link_student_account(
     school_id: UUID,
