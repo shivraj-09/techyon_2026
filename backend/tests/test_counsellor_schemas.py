@@ -131,33 +131,73 @@ class StudentVoiceSchemaTests(TestCase):
 
 
 class CounsellorRoleDependencyTests(IsolatedAsyncioTestCase):
-    async def test_teacher_is_allowed_when_role_is_explicitly_permitted(self):
+    async def test_role_dependency_finds_allowed_role_when_another_role_is_older(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
         from app.core.authorization import require_school_roles
 
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [
+            {"school_id": str(school_id), "role": "teacher", "status": "active"},
+            {"school_id": str(school_id), "role": "counsellor", "status": "active"},
+        ]
+        dependency = require_school_roles("counsellor")
+        with patch("app.core.authorization.fetch_active_memberships", new=AsyncMock(return_value=memberships)):
+            result = await dependency(school_id, {"id": "user-1"}, credentials)
+        self.assertEqual(result["role"], "counsellor")
+
+    async def test_role_dependency_respects_declared_role_precedence(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.core.authorization import require_school_roles
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [
+            {"school_id": str(school_id), "role": "counsellor", "status": "active"},
+            {"school_id": str(school_id), "role": "teacher", "status": "active"},
+        ]
         dependency = require_school_roles("teacher", "counsellor")
-        membership = {"school_id": "school-a", "role": "teacher", "status": "active"}
-        self.assertEqual(await dependency(membership), membership)
+        with patch("app.core.authorization.fetch_active_memberships", new=AsyncMock(return_value=memberships)):
+            result = await dependency(school_id, {"id": "user-1"}, credentials)
+        self.assertEqual(result["role"], "teacher")
+
+    async def test_role_dependency_rejects_membership_from_another_school(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.core.authorization import require_school_roles
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        dependency = require_school_roles("counsellor")
+        with patch("app.core.authorization.fetch_active_memberships", new=AsyncMock(return_value=[
+            {"school_id": "another-school", "role": "counsellor", "status": "active"}
+        ])):
+            with self.assertRaises(HTTPException) as raised:
+                await dependency(school_id, {"id": "user-1"}, credentials)
+        self.assertEqual(raised.exception.status_code, 403)
 
     async def test_admin_is_not_implicitly_a_counsellor(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
         from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
         from app.core.authorization import require_school_roles
 
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
         dependency = require_school_roles("counsellor")
-        membership = {"school_id": "school-a", "role": "admin", "status": "active"}
-        with self.assertRaises(HTTPException) as raised:
-            await dependency(membership)
+        with patch("app.core.authorization.fetch_active_memberships", new=AsyncMock(return_value=[
+            {"school_id": str(school_id), "role": "admin", "status": "active"}
+        ])):
+            with self.assertRaises(HTTPException) as raised:
+                await dependency(school_id, {"id": "user-1"}, credentials)
         self.assertEqual(raised.exception.status_code, 403)
-
-    async def test_teacher_is_not_allowed_by_counsellor_only_dependency(self):
-        from fastapi import HTTPException
-        from app.core.authorization import require_school_roles
-
-        dependency = require_school_roles("counsellor")
-        membership = {"school_id": "school-a", "role": "teacher", "status": "active"}
-        with self.assertRaises(HTTPException) as raised:
-            await dependency(membership)
-        self.assertEqual(raised.exception.status_code, 403)
-
 
 
 class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
@@ -346,8 +386,10 @@ class StudentVoiceAssignmentRaceRouteTests(IsolatedAsyncioTestCase):
         with patch.object(counsellor, "_request", new=AsyncMock(
             side_effect=[no_student_link, conversation, assignment_lost]
         )) as request, patch.object(
-            counsellor, "get_active_school_membership",
-            new=AsyncMock(return_value={"role": "counsellor", "status": "active"})
+            counsellor, "fetch_active_memberships",
+            new=AsyncMock(return_value=[{
+                "school_id": str(school_id), "role": "counsellor", "status": "active"
+            }])
         ):
             with self.assertRaises(HTTPException) as raised:
                 await counsellor.send_student_voice_message(
