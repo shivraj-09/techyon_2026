@@ -37,7 +37,7 @@ create table if not exists public.counselling_notices (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint counselling_notices_school_class_fk
-        foreign key (school_id, class_id) references public.classes(school_id, id),
+        foreign key (class_id, school_id) references public.classes(id, school_id),
     constraint counselling_notices_expiry_check check (expires_at is null or expires_at > publish_at),
     constraint counselling_notices_class_audience_check check (class_id is null or audience = 'students')
 );
