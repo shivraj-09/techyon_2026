@@ -374,6 +374,7 @@ class StudentVoiceMigrationContractTests(TestCase):
         cls.student_voice_base = (migrations / "202611140005_create_student_voice.sql").read_text()
         cls.workflow_transitions = (migrations / "202611140006_enforce_counsellor_workflow_transitions.sql").read_text()
         cls.student_access = (migrations / "202611140011_revoke_student_voice_access_with_link.sql").read_text()
+        cls.identity_private_rls = (migrations / "202611140014_keep_student_voice_identity_private_in_rls.sql").read_text()
         cls.identity_reveal = (migrations / "202611140012_preserve_identity_reveal_after_completion.sql").read_text()
         cls.terminal_revoke = (migrations / "202611140013_make_student_voice_revocation_terminal.sql").read_text()
 
@@ -402,6 +403,14 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("m.role = 'counsellor'::public.membership_role", sql)
         self.assertIn("m.status = 'active'::public.membership_status", sql)
         self.assertIn("student_voice_student_can_message_conversation", sql)
+
+    def test_identity_private_rls_helper_rejects_dual_role_accounts(self):
+        sql = self.identity_private_rls.lower()
+        self.assertIn("security definer", sql)
+        self.assertIn("set search_path = ''", sql)
+        self.assertIn("and not exists (", sql)
+        self.assertIn("m.role = 'counsellor'::public.membership_role", sql)
+        self.assertIn("m.status = 'active'::public.membership_status", sql)
 
     def test_identity_reveal_requires_assigned_counsellor_and_active_link(self):
         sql = self.identity_reveal.lower()
