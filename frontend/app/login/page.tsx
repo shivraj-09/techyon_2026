@@ -75,37 +75,57 @@ export default function LoginPage() {
 
       if (signInError) throw signInError;
 
-      // 2. FastAPI Backend Verification Endpoint (/api/v1/auth/me & /api/v1/auth/memberships)
-      if (authData?.session?.access_token) {
-        const api =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
-        try {
-          // Verify token identity with FastAPI backend
-          await fetch(`${api}/api/v1/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          // Fetch active school memberships
-          const membershipRes = await fetch(`${api}/api/v1/auth/memberships`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          if (membershipRes.ok) {
-            const membershipData = await membershipRes.json();
-            // Memberships verified and loaded
-            console.log("Verified memberships:", membershipData.memberships);
-          }
-        } catch (backendError) {
-          // If the backend server isn't running yet, user can still proceed into app
-          console.warn("Backend auth verification warning:", backendError);
-        }
+      // 2. Require the FastAPI backend to verify the Supabase session.
+      // A successful Supabase login alone is not sufficient for app access.
+      const accessToken = authData?.session?.access_token;
+      if (!accessToken) {
+        throw new Error("Sign-in succeeded, but no access token was returned. Please try again.");
       }
 
+      const api = (
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
+      ).replace(/\\/$/, "");
+      const headers = { Authorization: `Bearer ${accessToken}` };
+
+      const meRes = await fetch(`${api}/api/v1/auth/me`, {
+        headers,
+        cache: "no-store",
+      });
+      if (!meRes.ok) {
+        throw new Error(
+          meRes.status === 401
+            ? "Your session could not be verified. Please sign in again."
+            : "EduSync could not verify your account. Please try again."
+        );
+      }
+
+      const meData = await meRes.json();
+      if (meData?.success !== true || !meData?.user?.id) {
+        throw new Error("The authentication service returned an invalid account response.");
+      }
+
+      const membershipRes = await fetch(`${api}/api/v1/auth/memberships`, {
+        headers,
+        cache: "no-store",
+      });
+      if (!membershipRes.ok) {
+        throw new Error(
+          membershipRes.status === 401
+            ? "Your session expired. Please sign in again."
+            : "EduSync could not verify your school access. Please try again."
+        );
+      }
+
+      const membershipData = await membershipRes.json();
+      if (
+        membershipData?.success !== true ||
+        !Array.isArray(membershipData?.memberships)
+      ) {
+        throw new Error("The school access service returned an invalid response.");
+      }
+
+      // The backend/database determines roles and access. The role selector is
+      // only a UI preference and is never treated as authorization.
       router.replace("/dashboard");
       router.refresh();
     } catch (err) {
