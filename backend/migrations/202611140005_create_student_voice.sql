@@ -219,6 +219,7 @@ with check (
               (student_voice_messages.sender_kind = 'student' and c.student_user_id = (select auth.uid()))
               or (
                   student_voice_messages.sender_kind = 'counsellor'
+                  and c.assigned_counsellor_id = (select auth.uid())
                   and exists (
                       select 1 from public.school_memberships m
                       where m.school_id = c.school_id
@@ -242,11 +243,16 @@ create policy student_voice_meetings_counsellor_select on public.student_voice_m
 for select to authenticated
 using (
     exists (
-        select 1 from public.school_memberships m
-        where m.school_id = student_voice_meeting_requests.school_id
-          and m.user_id = (select auth.uid())
-          and m.role = 'counsellor'::public.membership_role
-          and m.status = 'active'::public.membership_status
+        select 1
+        from public.student_voice_conversations c
+        join public.school_memberships m
+          on m.school_id = c.school_id
+         and m.user_id = (select auth.uid())
+         and m.role = 'counsellor'::public.membership_role
+         and m.status = 'active'::public.membership_status
+        where c.id = student_voice_meeting_requests.conversation_id
+          and c.school_id = student_voice_meeting_requests.school_id
+          and (c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid()))
     )
 );
 
@@ -270,22 +276,32 @@ for update to authenticated
 using (
     status in ('pending', 'approved')
     and exists (
-        select 1 from public.school_memberships m
-        where m.school_id = student_voice_meeting_requests.school_id
-          and m.user_id = (select auth.uid())
-          and m.role = 'counsellor'::public.membership_role
-          and m.status = 'active'::public.membership_status
+        select 1
+        from public.student_voice_conversations c
+        join public.school_memberships m
+          on m.school_id = c.school_id
+         and m.user_id = (select auth.uid())
+         and m.role = 'counsellor'::public.membership_role
+         and m.status = 'active'::public.membership_status
+        where c.id = student_voice_meeting_requests.conversation_id
+          and c.school_id = student_voice_meeting_requests.school_id
+          and (c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid()))
     )
 )
 with check (
     handled_by = (select auth.uid())
     and status in ('approved', 'declined', 'completed')
     and exists (
-        select 1 from public.school_memberships m
-        where m.school_id = student_voice_meeting_requests.school_id
-          and m.user_id = (select auth.uid())
-          and m.role = 'counsellor'::public.membership_role
-          and m.status = 'active'::public.membership_status
+        select 1
+        from public.student_voice_conversations c
+        join public.school_memberships m
+          on m.school_id = c.school_id
+         and m.user_id = (select auth.uid())
+         and m.role = 'counsellor'::public.membership_role
+         and m.status = 'active'::public.membership_status
+        where c.id = student_voice_meeting_requests.conversation_id
+          and c.school_id = student_voice_meeting_requests.school_id
+          and c.assigned_counsellor_id = (select auth.uid())
     )
 );
 
@@ -312,7 +328,8 @@ using (
          and m.user_id = (select auth.uid())
          and m.role = 'counsellor'::public.membership_role
          and m.status = 'active'::public.membership_status
-        where c.school_id = student_voice_student_links.school_id
+        where c.assigned_counsellor_id = (select auth.uid())
+          and c.school_id = student_voice_student_links.school_id
           and c.student_user_id = student_voice_student_links.student_user_id
     )
 );
@@ -379,6 +396,7 @@ with check (
         where mr.id = student_voice_identity_reveal_audit.meeting_request_id
           and mr.school_id = student_voice_identity_reveal_audit.school_id
           and mr.status = 'approved'
+          and c.assigned_counsellor_id = (select auth.uid())
     )
 );
 drop policy if exists student_voice_identity_audit_counsellor_read_own on public.student_voice_identity_reveal_audit;
