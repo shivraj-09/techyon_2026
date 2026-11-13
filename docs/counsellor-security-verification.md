@@ -2,29 +2,29 @@
 
 ## Safety boundary
 
-The migrations in this feature branch are **not applied to the hosted Supabase project**. Do not run them against production for verification.
+The counsellor and Student Voice migrations are **not applied to the hosted Supabase project**. Do not run them against production for verification.
 
-Use a disposable local Supabase stack. The local stack must contain the existing EduSync base schema (schools, memberships, students, classes, enrollments, class-teacher assignments) before the counsellor migrations are applied. The counsellor migrations are not a standalone schema.
+The hosted project was inspected read-only. Its foundational schema is present, but the counsellor and Student Voice tables are not deployed. The live migration ledger contains four entries; the existing baseline and pre-feature objects must be reconciled before deployment. No hosted DDL, data, permission, or migration-history changes have been made.
 
-## Local prerequisites
+## Automated database verification
 
-- Docker Desktop running
-- Supabase CLI installed
-- PostgreSQL client (`psql`) available
-- A local copy of this repository on `feature/counsellor-backend`
+GitHub Actions starts a disposable PostgreSQL 17 service and:
 
-Start the local stack from the repository's Supabase project directory (once the project config and base migrations are present):
+1. Bootstraps Supabase auth scaffolding and a synthetic EduSync baseline.
+2. Applies the recovered baseline snapshots and existing backend migrations.
+3. Applies all 15 `backend/migrations/20261114*.sql` feature migrations in filename order, each in a separate `psql` invocation so the counsellor enum addition is committed before later migrations use it.
+4. Runs structural/RLS/trigger assertions.
+5. Runs multi-school behavioural tests covering referral access, Student Voice ownership, dual-role exclusion, message/meeting access, identity reveal, and terminal link revocation.
+6. Verifies trigger-only SECURITY DEFINER functions are not directly executable by `anon` or `authenticated`, while the announcement notification trigger still fans out correctly.
 
-```bash
-supabase start
-supabase db reset
-```
+The complete database job passed in GitHub Actions run #242:
+https://github.com/shivraj-09/techyon_2026/actions/runs/43511296160
 
-If this repository does not yet have a complete `supabase/config.toml` and ordered base migrations, do not point the CLI at the hosted project. First assemble a local schema snapshot or restore a sanitized development database locally.
+This fixture is synthetic. It validates the feature migration chain and selected RLS behaviours; it is not a full clone of the hosted Supabase project and does not replace authenticated browser/API tests against the intended environment.
 
 ## Required verification matrix
 
-Use separate test users for each role and at least two schools. Set the request JWT claims for each role/user; testing as the database owner bypasses RLS and is not a valid RLS test.
+Use separate test users for each role and at least two schools. Set request JWT claims for each role/user; testing as the database owner bypasses RLS and is not a valid RLS test.
 
 | Area | Actor | Expected result |
 |---|---|---|
@@ -38,26 +38,23 @@ Use separate test users for each role and at least two schools. Set the request 
 | Case creation | Assigned counsellor, accepted referral | Can create one case |
 | Case creation | Unassigned counsellor / unaccepted referral | Denied |
 | Case and notes | Assigned counsellor | Can read and append notes while case is open |
-| Case status | Assigned counsellor | open -> in_progress/closed; in_progress -> closed |
-| Case status | Any actor | Cannot reopen a closed case or change status for another counsellor's case |
 | Case and notes | Teacher, admin, other counsellor | Cannot read confidential notes |
-| Session/notice | Creating counsellor | Can manage own school content |
-| Session lifecycle | Creator | draft -> published/cancelled; published -> cancelled/completed; terminal states cannot be republished |
-| Notice lifecycle | Creator | draft -> published/cancelled; published -> cancelled; cancelled is terminal |
-| Session/notice | Parent/teacher | Can read only published content addressed to their role |
 | Student Voice link | School admin | Can create and revoke links in own school |
 | Student Voice conversation | Linked student | Can create and read own pseudonymous conversation |
 | Student Voice conversation | Counsellor | Can see unassigned conversations and their own assigned conversations |
 | Student Voice assignment | Another counsellor | Cannot take over an assigned conversation |
-| Student Voice messages | Student/counsellor | Can read/send only as a participant under the conversation rules |
+| Student Voice messages | Student/counsellor | Can read/send only as a participant under conversation rules |
+| Dual-role account | Linked student who is also counsellor | Cannot send as either Student Voice participant role |
 | Meeting request | Student | Can request a meeting only on own open conversation |
 | Meeting request status | Assigned counsellor | pending -> approved/declined; approved -> completed |
 | Identity reveal | Assigned counsellor, approved or completed request | Returns student identity and inserts audit row |
 | Identity reveal | Unassigned counsellor, pending/declined request, other school, or revoked link | Denied; no identity returned |
+| Trigger RPC | anon/authenticated | Cannot directly execute trigger-only SECURITY DEFINER functions |
+| Notification trigger | Authenticated admin creates announcement | Trigger still creates expected recipient notifications |
 
-## Migration order
+## Feature migration order
 
-Apply the existing base migrations first, then the counsellor migrations in filename order:
+Apply the existing baseline first, then the feature migrations in this order:
 
 1. `202611140001_add_counsellor_membership_role.sql`
 2. `202611140002_create_counsellor_referrals.sql`
@@ -72,29 +69,35 @@ Apply the existing base migrations first, then the counsellor migrations in file
 11. `202611140011_revoke_student_voice_access_with_link.sql`
 12. `202611140012_preserve_identity_reveal_after_completion.sql`
 13. `202611140013_make_student_voice_revocation_terminal.sql`
+14. `202611140014_keep_student_voice_identity_private_in_rls.sql`
+15. `202611140015_restrict_trigger_function_execution.sql`
 
-The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
+The enum addition in migration 001 must commit before later migrations cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
-## Acceptance criteria
+## Identity and revocation guarantees
 
-- Every negative test is denied by the database, not merely by a FastAPI route.
-- Cross-school access returns no rows and rejects writes.
-- Identity reveal is denied unless the meeting request is approved or completed, the conversation is assigned to the caller, the caller has active counsellor membership, and the student account link is active.
-- The identity reveal audit row is written in the same transaction as the reveal.
-- Revoking a student link suspends student-facing access to existing conversations, messages, and meeting requests; the link cannot be reactivated or repointed to another identity.
-- The local database is reset and the full migration sequence reapplied cleanly.
-- Record the exact commit SHA and test output before calling the module database-verified.
-
-## Student Voice link revocation
-
-Account-link revocation is terminal: the database permits only active -> revoked, and identity columns cannot be changed. The active account-link row is revalidated by student-facing RLS policies for conversation reads, message reads/writes, and meeting-request reads/creation. Revoking a link therefore suspends access to existing Student Voice content as well as preventing new conversations. Counsellor access remains governed by active school membership and conversation assignment.
-
-Identity reveal is permitted for approved and completed meeting requests, but still requires the same assigned active counsellor, active school membership, and active student link. Every successful reveal is recorded as a separate audit event. Revoking the student link blocks future identity reveals; it cannot reverse information already disclosed. The reveal function takes a shared row lock on the active link while it validates and audits the reveal, serializing disclosure against concurrent link revocation: a completed revocation blocks the reveal, while a reveal already in progress completes before revocation can commit.
+- Student Voice links are terminal: active -> revoked only. Identity columns cannot be changed after creation.
+- Student-facing RLS revalidates the active link for existing conversations, messages and meeting requests. Revocation suspends access to existing Student Voice content and prevents new conversations.
+- Identity reveal is permitted only for approved/completed meeting requests, and still requires the assigned active counsellor, active school membership and active student link.
+- Every successful reveal is recorded as a separate audit event.
+- Revoking a link blocks future identity reveals; it cannot reverse information already disclosed.
+- The reveal function takes a shared row lock on the active link while validating and auditing, serializing disclosure against concurrent revocation.
 
 ## Known audience limitation
 
-The schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.
+The schema accepts `students` as a counselling session/notice audience, but current RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently valid only for the `students` audience.
+
+## Remaining production checks
+
+- Reconcile the four hosted migration-ledger entries with the recovered baseline and existing backend migration effects. Do not replay already-applied baseline DDL blindly.
+- Review the exact 15-migration deployment plan against the live schema and role grants.
+- Confirm production frontend/backend hosting, secrets, CORS, auth redirect URLs and invitation email delivery.
+- Run authenticated end-to-end tests for invitation, teacher referral, counsellor review/case notes, Student Voice messaging, meeting requests, identity reveal and revocation.
+- Apply hosted migrations only after explicit production approval and a backup/rollback plan.
+- Deploy frontend/backend only after the migration and smoke-test gates pass.
 
 ## Current status
 
-Static review and API schema/authorization unit tests exist. Database-backed RLS and trigger tests have **not** yet been run. No hosted production migrations have been applied.
+- Static API/schema tests and the PostgreSQL 17 migration/RLS behavioural CI suite pass.
+- Latest frontend changes are being wired to real backend flows; preview-only mock routes are redirected to the API-connected pages.
+- Hosted Supabase remains untouched. This feature branch is not a production deployment.
