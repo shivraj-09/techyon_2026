@@ -23,10 +23,10 @@ Read-only inspection confirmed:
 Before applying anything:
 - [ ] Compare all live objects against the recovered schema snapshots and existing backend migration files.
 - [ ] Do not replay the baseline snapshots or the already-applied backend DDL blindly.
-- [ ] Confirm the 15 `20261114*.sql` feature migrations are the only DDL being applied.
+- [ ] Confirm the 16 `20261114*.sql` feature migrations are the only DDL being applied.
 - [ ] Apply the counsellor role enum addition in its own committed migration before later migrations use the new enum value.
 - [ ] Preserve migration order from `docs/counsellor-security-verification.md`.
-- [ ] Confirm the new trigger-function EXECUTE revokes in migration 015 are included.
+- [ ] Confirm the trigger-function EXECUTE revokes in migration 015 and the minimal audited identity response in migration 016 are included.
 - [ ] Record each successful migration in the Supabase migration ledger.
 - [ ] Re-run Supabase Security Advisor after migration 015; the two trigger-function warnings should clear if the live ACLs match the migration.
 
