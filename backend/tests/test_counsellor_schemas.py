@@ -94,3 +94,32 @@ class StudentVoiceSchemaTests(TestCase):
     def test_meeting_review_rejects_unknown_action(self):
         with self.assertRaises(ValidationError):
             StudentVoiceMeetingReview(status="cancelled")
+
+
+class CounsellorRoleDependencyTests(__import__("unittest").IsolatedAsyncioTestCase):
+    async def test_teacher_is_allowed_when_role_is_explicitly_permitted(self):
+        from app.core.authorization import require_school_roles
+
+        dependency = require_school_roles("teacher", "counsellor")
+        membership = {"school_id": "school-a", "role": "teacher", "status": "active"}
+        self.assertEqual(await dependency(membership), membership)
+
+    async def test_admin_is_not_implicitly_a_counsellor(self):
+        from fastapi import HTTPException
+        from app.core.authorization import require_school_roles
+
+        dependency = require_school_roles("counsellor")
+        membership = {"school_id": "school-a", "role": "admin", "status": "active"}
+        with self.assertRaises(HTTPException) as raised:
+            await dependency(membership)
+        self.assertEqual(raised.exception.status_code, 403)
+
+    async def test_teacher_is_not_allowed_by_counsellor_only_dependency(self):
+        from fastapi import HTTPException
+        from app.core.authorization import require_school_roles
+
+        dependency = require_school_roles("counsellor")
+        membership = {"school_id": "school-a", "role": "teacher", "status": "active"}
+        with self.assertRaises(HTTPException) as raised:
+            await dependency(membership)
+        self.assertEqual(raised.exception.status_code, 403)
