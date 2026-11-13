@@ -1,7 +1,8 @@
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 ReferralCategory = Literal[
@@ -70,8 +71,6 @@ class CaseNoteCreate(BaseModel):
         return value
 
 
-from datetime import datetime
-from pydantic import model_validator
 
 
 CounsellingAudience = Literal["students", "parents", "teachers"]
@@ -93,6 +92,10 @@ class CounsellingSessionCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_schedule(self):
+        if self.starts_at.tzinfo is None or self.starts_at.utcoffset() is None:
+            raise ValueError("starts_at must include a timezone")
+        if self.ends_at.tzinfo is None or self.ends_at.utcoffset() is None:
+            raise ValueError("ends_at must include a timezone")
         if self.ends_at <= self.starts_at:
             raise ValueError("ends_at must be later than starts_at")
         if self.class_id is not None and self.audience != "students":
@@ -111,6 +114,10 @@ class CounsellingNoticeCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_notice(self):
+        if self.publish_at.tzinfo is None or self.publish_at.utcoffset() is None:
+            raise ValueError("publish_at must include a timezone")
+        if self.expires_at is not None and (self.expires_at.tzinfo is None or self.expires_at.utcoffset() is None):
+            raise ValueError("expires_at must include a timezone")
         if self.expires_at is not None and self.expires_at <= self.publish_at:
             raise ValueError("expires_at must be later than publish_at")
         if self.class_id is not None and self.audience != "students":
