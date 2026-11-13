@@ -552,6 +552,46 @@ async def link_student_account(
     return {"success": True, "link": rows[0]}
 
 
+@student_voice_router.patch("/links/{link_id}/revoke")
+async def revoke_student_voice_link(
+    school_id: UUID,
+    link_id: UUID,
+    _admin: dict = Depends(require_school_roles("admin")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Revoke a student account link; revocation is terminal at the database layer."""
+    existing_rows = _rows(await _request(
+        "student_voice_student_links", "GET", credentials,
+        params={
+            "select": "id,status",
+            "id": f"eq.{link_id}",
+            "school_id": f"eq.{school_id}",
+            "limit": "1",
+        },
+    ))
+    if not existing_rows:
+        raise HTTPException(status_code=404, detail="Student Voice link not found")
+    if existing_rows[0]["status"] != "active":
+        raise HTTPException(status_code=409, detail="Student Voice link is already revoked")
+
+    response = await _request(
+        "student_voice_student_links", "PATCH", credentials,
+        params={
+            "select": "id,school_id,status",
+            "id": f"eq.{link_id}",
+            "school_id": f"eq.{school_id}",
+            "status": "eq.active",
+        },
+        payload={"status": "revoked"},
+    )
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not revoke Student Voice link")
+    rows = _rows(response)
+    if not rows:
+        raise HTTPException(status_code=409, detail="Student Voice link changed; refresh and try again")
+    return {"success": True, "link": rows[0]}
+
+
 @student_voice_router.post("/conversations", status_code=status.HTTP_201_CREATED)
 async def create_student_voice_conversation(
     school_id: UUID,
