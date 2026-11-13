@@ -1,3 +1,8 @@
+:root {
+  --font-dm-sans: "Arial";
+  --font-jetbrains-mono: "Courier New";
+}
+
 *,
 *::before,
 *::after {
