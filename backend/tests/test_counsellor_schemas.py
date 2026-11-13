@@ -644,3 +644,50 @@ class CounsellingPublicationRouteTests(IsolatedAsyncioTestCase):
 
         self.assertEqual(result["notice"]["status"], "published")
         self.assertEqual(request.await_args_list[1].kwargs["params"]["status"], "eq.draft")
+
+
+class CounsellorReferralInboxRoleTests(IsolatedAsyncioTestCase):
+    async def test_dual_role_account_gets_counsellor_school_inbox(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [
+            {"school_id": str(school_id), "role": "teacher", "status": "active"},
+            {"school_id": str(school_id), "role": "counsellor", "status": "active"},
+        ]
+        response = httpx.Response(200, json=[{"id": "referral-1"}])
+        with patch.object(counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)), patch.object(
+            counsellor, "_request", new=AsyncMock(return_value=response)
+        ) as request:
+            result = await counsellor.list_referrals(
+                school_id=school_id, referral_status=None, limit=50, offset=0,
+                current_user={"id": "user-1"}, credentials=credentials,
+            )
+        self.assertEqual(result["referrals"], [{"id": "referral-1"}])
+        self.assertEqual(request.await_args.kwargs["params"]["school_id"], f"eq.{school_id}")
+
+    async def test_referral_inbox_rejects_membership_without_teacher_or_counsellor_role(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [{"school_id": str(school_id), "role": "parent", "status": "active"}]
+        with patch.object(counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)), patch.object(
+            counsellor, "_request", new=AsyncMock()
+        ) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.list_referrals(
+                    school_id=school_id, referral_status=None, limit=50, offset=0,
+                    current_user={"id": "user-1"}, credentials=credentials,
+                )
+        self.assertEqual(raised.exception.status_code, 403)
+        request.assert_not_awaited()
