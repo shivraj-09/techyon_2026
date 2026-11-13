@@ -1,7 +1,7 @@
 -- Confidential counselling cases and append-only case notes.
 -- Committed to feature/counsellor-backend only; not applied to hosted Supabase.
 alter table public.counsellor_referrals
-    add constraint counsellor_referrals_school_id_id_key unique (school_id, id);
+    add constraint counsellor_referrals_id_school_id_key unique (id, school_id);
 
 create table if not exists public.counselling_cases (
     id uuid primary key default gen_random_uuid(),
@@ -15,9 +15,9 @@ create table if not exists public.counselling_cases (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint counselling_cases_school_student_fk
-        foreign key (school_id, student_id) references public.students(school_id, id),
+        foreign key (student_id, school_id) references public.students(id, school_id),
     constraint counselling_cases_referral_fk
-        foreign key (school_id, referral_id) references public.counsellor_referrals(school_id, id),
+        foreign key (referral_id, school_id) references public.counsellor_referrals(id, school_id),
     constraint counselling_cases_closed_at_check
         check ((status = 'closed' and closed_at is not null) or (status <> 'closed' and closed_at is null)),
     constraint counselling_cases_one_per_referral unique (referral_id)
