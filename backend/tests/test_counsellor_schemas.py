@@ -10,6 +10,7 @@ from app.schemas.counsellor import (
     ReferralCreate,
     StudentVoiceMeetingRequestCreate,
     StudentVoiceMessageCreate,
+    StudentVoiceMeetingReview,
 )
 
 
@@ -85,3 +86,11 @@ class StudentVoiceSchemaTests(TestCase):
     def test_case_status_is_limited(self):
         with self.assertRaises(ValidationError):
             CaseStatusUpdate(status="reopened")
+
+    def test_meeting_review_accepts_supported_actions(self):
+        self.assertEqual(StudentVoiceMeetingReview(status="approved").status, "approved")
+        self.assertEqual(StudentVoiceMeetingReview(status="completed").status, "completed")
+
+    def test_meeting_review_rejects_unknown_action(self):
+        with self.assertRaises(ValidationError):
+            StudentVoiceMeetingReview(status="cancelled")
