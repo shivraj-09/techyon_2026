@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 class InviteMemberRequest(BaseModel):
     email: str = Field(min_length=5, max_length=254)
     full_name: str = Field(min_length=2, max_length=120)
-    role: Literal["teacher", "parent"]
+    role: Literal["teacher", "parent", "counsellor"]
 
     @field_validator("email")
     @classmethod
