@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui";
 
 type Conversation = { id: string; public_ref: string; status: string; created_at: string };
 type Message = { id: string; sender_kind: string; body: string; created_at: string };
