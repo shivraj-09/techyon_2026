@@ -7,7 +7,13 @@ from fastapi.security import HTTPAuthorizationCredentials
 from app.core.authorization import require_school_roles
 from app.core.config import settings
 from app.core.security import bearer_scheme, get_current_user
-from app.schemas.counsellor import ReferralCreate, ReferralReviewUpdate
+from app.schemas.counsellor import (
+    CaseCreateFromReferral,
+    CaseNoteCreate,
+    CaseStatusUpdate,
+    ReferralCreate,
+    ReferralReviewUpdate,
+)
 
 router = APIRouter(prefix="/schools/{school_id}/counsellor/referrals", tags=["Counsellor"])
 
@@ -192,7 +198,7 @@ async def review_referral(
         "PATCH",
         credentials,
         params={
-            "select": "id,school_id,student_id,class_id,submitted_by,category,summary,urgency,status,counsellor_response,assigned_counsellor_id,created_at,updated_at",
+            "select": "id,school_id,student_id,class_id,submitted_by,category,summary,urgency,status,assigned_counsellor_id,created_at,updated_at",
             "id": f"eq.{referral_id}",
             "school_id": f"eq.{school_id}",
         },
@@ -204,9 +210,6 @@ async def review_referral(
     if not rows:
         raise HTTPException(status_code=404, detail="Referral not found")
     return {"success": True, "referral": rows[0]}
-
-
-from app.schemas.counsellor import CaseCreateFromReferral, CaseNoteCreate, CaseStatusUpdate
 
 cases_router = APIRouter(prefix="/schools/{school_id}/counselling/cases", tags=["Counselling Cases"])
 
