@@ -135,13 +135,13 @@ RESET ROLE;
 -- A counsellor account that also has a student link must not fall back to student access.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
-DO $
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.student_voice_conversations
       WHERE id = '70000000-0000-4000-8000-000000000002') <> 0 THEN
     RAISE EXCEPTION 'Dual-role counsellor account must not access Student Voice as a student';
   END IF;
-END $;
+END $$;
 RESET ROLE;
 
 -- Linked student can read their own conversation and message while the link is active.
@@ -153,7 +153,7 @@ BEGIN
      OR (SELECT count(*) FROM public.student_voice_messages) <> 1 THEN
     RAISE EXCEPTION 'Active linked student cannot read their own Student Voice data';
   END IF;
-END $;
+END $$;
 RESET ROLE;
 
 -- A linked student who also has an active counsellor membership must not
@@ -167,14 +167,14 @@ VALUES (
 );
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
-DO $
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.student_voice_conversations) <> 0
      OR (SELECT count(*) FROM public.student_voice_messages) <> 0
      OR (SELECT count(*) FROM public.student_voice_meeting_requests) <> 0 THEN
     RAISE EXCEPTION 'Dual-role counsellor account was granted student-facing Student Voice access';
   END IF;
-END $;
+END $$;
 RESET ROLE;
 DELETE FROM public.school_memberships
 WHERE school_id = '10000000-0000-4000-8000-000000000001'
