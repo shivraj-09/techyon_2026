@@ -74,6 +74,15 @@ INSERT INTO public.student_voice_messages
 VALUES
  ('10000000-0000-4000-8000-000000000001', '70000000-0000-4000-8000-000000000001', 'student', '20000000-0000-4000-8000-000000000006', 'I would like to speak privately.');
 
+INSERT INTO public.student_voice_meeting_requests
+ (school_id, conversation_id, requested_by, preferred_times, student_message)
+VALUES
+ ('10000000-0000-4000-8000-000000000001',
+  '70000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000006',
+  'Weekdays after 3 PM',
+  'Please arrange a private meeting.');
+
 -- Teacher can see only their own referral, not another teacher's referral.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
@@ -122,8 +131,33 @@ BEGIN
      OR (SELECT count(*) FROM public.student_voice_messages) <> 1 THEN
     RAISE EXCEPTION 'Active linked student cannot read their own Student Voice data';
   END IF;
-END $$;
+END $;
 RESET ROLE;
+
+-- A linked student who also has an active counsellor membership must not
+-- fall through the student-facing policies. Identity ambiguity is deny-by-default.
+INSERT INTO public.school_memberships (school_id, user_id, role, status)
+VALUES (
+ '10000000-0000-4000-8000-000000000001',
+ '20000000-0000-4000-8000-000000000006',
+ 'counsellor',
+ 'active'
+);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
+DO $
+BEGIN
+  IF (SELECT count(*) FROM public.student_voice_conversations) <> 0
+     OR (SELECT count(*) FROM public.student_voice_messages) <> 0
+     OR (SELECT count(*) FROM public.student_voice_meeting_requests) <> 0 THEN
+    RAISE EXCEPTION 'Dual-role counsellor account was granted student-facing Student Voice access';
+  END IF;
+END $;
+RESET ROLE;
+DELETE FROM public.school_memberships
+WHERE school_id = '10000000-0000-4000-8000-000000000001'
+  AND user_id = '20000000-0000-4000-8000-000000000006'
+  AND role = 'counsellor';
 
 -- Only the active school admin can revoke the link; revocation is terminal.
 SET LOCAL ROLE authenticated;
