@@ -157,7 +157,8 @@ END $$;
 RESET ROLE;
 
 -- A linked student who also has an active counsellor membership must not
--- fall through the student-facing policies. Identity ambiguity is deny-by-default.
+-- use student-facing access. The counsellor role remains independently valid,
+-- so this test checks the student-only predicates and student message path.
 INSERT INTO public.school_memberships (school_id, user_id, role, status)
 VALUES (
  '10000000-0000-4000-8000-000000000001',
@@ -169,11 +170,38 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM public.student_voice_conversations) <> 0
-     OR (SELECT count(*) FROM public.student_voice_messages) <> 0
-     OR (SELECT count(*) FROM public.student_voice_meeting_requests) <> 0 THEN
-    RAISE EXCEPTION 'Dual-role counsellor account was granted student-facing Student Voice access';
+  IF public.student_voice_owns_active_conversation(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001'
+     ) THEN
+    RAISE EXCEPTION 'Dual-role account passed student conversation ownership check';
   END IF;
+  IF public.student_voice_is_active_linked_student(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001',
+       false
+     ) THEN
+    RAISE EXCEPTION 'Dual-role account passed private student identity check';
+  END IF;
+  IF public.student_voice_student_can_message_conversation(
+       '10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001'
+     ) THEN
+    RAISE EXCEPTION 'Dual-role account passed student message authorization';
+  END IF;
+  BEGIN
+    INSERT INTO public.student_voice_messages
+      (school_id, conversation_id, sender_kind, sender_user_id, body)
+    VALUES
+      ('10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000001',
+       'student',
+       auth.uid(),
+       'Student-role message must be rejected for a dual-role account.');
+    RAISE EXCEPTION 'Dual-role account sent a Student Voice message as a student';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
 END $$;
 RESET ROLE;
 DELETE FROM public.school_memberships
