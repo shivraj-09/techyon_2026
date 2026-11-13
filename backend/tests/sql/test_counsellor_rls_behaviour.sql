@@ -96,7 +96,7 @@ VALUES
 -- Teacher can see only their own referral, not another teacher's referral.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000001', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.counsellor_referrals) <> 1 THEN
     RAISE EXCEPTION 'Teacher RLS should expose exactly the submitting teacher own referral';
@@ -107,7 +107,7 @@ RESET ROLE;
 -- A school counsellor sees referrals from their school, never another school.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.counsellor_referrals) <> 2 THEN
     RAISE EXCEPTION 'Counsellor should see both referrals in their own school';
@@ -124,7 +124,7 @@ RESET ROLE;
 -- A counsellor in a different school cannot discover another school's referrals.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000004', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.counsellor_referrals) <> 1 THEN
     RAISE EXCEPTION 'Cross-school counsellor isolation failed';
@@ -135,7 +135,7 @@ RESET ROLE;
 -- A counsellor account that also has a student link must not fall back to student access.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000003', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.student_voice_conversations
       WHERE id = '70000000-0000-4000-8000-000000000002') <> 0 THEN
@@ -147,7 +147,7 @@ RESET ROLE;
 -- Linked student can read their own conversation and message while the link is active.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.student_voice_conversations) <> 1
      OR (SELECT count(*) FROM public.student_voice_messages) <> 1 THEN
@@ -168,7 +168,7 @@ VALUES (
 );
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
-DO $$$
+DO $$
 BEGIN
   IF public.student_voice_owns_active_conversation(
        '10000000-0000-4000-8000-000000000001',
@@ -246,7 +246,7 @@ RESET ROLE;
 -- Revocation immediately removes access to existing conversations and messages.
 SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
-DO $$$
+DO $$
 BEGIN
   IF (SELECT count(*) FROM public.student_voice_conversations) <> 0
      OR (SELECT count(*) FROM public.student_voice_messages) <> 0 THEN
