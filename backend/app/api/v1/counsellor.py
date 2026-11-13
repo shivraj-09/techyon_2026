@@ -211,9 +211,9 @@ async def review_referral(
         },
         payload=changes,
     )
-    if response.status_code not in (200, 204):
+    if response.status_code != 200:
         raise HTTPException(status_code=502, detail="Could not update referral")
-    rows = _rows(response, allowed=(200, 204))
+    rows = _rows(response)
     if not rows:
         raise HTTPException(status_code=404, detail="Referral not found")
     return {"success": True, "referral": rows[0]}
@@ -326,9 +326,9 @@ async def update_case_status(
         },
         payload={"status": payload.status},
     )
-    if response.status_code not in (200, 204):
+    if response.status_code != 200:
         raise HTTPException(status_code=502, detail="Could not update case")
-    rows = _rows(response, allowed=(200, 204))
+    rows = _rows(response)
     if not rows:
         raise HTTPException(status_code=404, detail="Case not found")
     return {"success": True, "case": rows[0]}
@@ -747,9 +747,9 @@ async def review_student_voice_meeting_request(
             "handled_at": datetime.now(timezone.utc).isoformat(),
         },
     )
-    if response.status_code not in (200, 204):
+    if response.status_code != 200:
         raise HTTPException(status_code=502, detail="Could not update meeting request")
-    rows = _rows(response, allowed=(200, 204))
+    rows = _rows(response)
     if not rows:
         raise HTTPException(status_code=404, detail="Pending meeting request not found")
     return {"success": True, "meeting_request": rows[0]}
