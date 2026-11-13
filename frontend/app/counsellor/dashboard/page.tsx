@@ -198,7 +198,7 @@ export default function CounsellorDashboardPage() {
 
   async function revealIdentity(request: MeetingRequest) {
     await runAction(async () => {
-      const data = await apiFetch(`/schools/${schoolId}/student-voice/meeting-requests/${request.id}/student-identity`);
+      const data = await apiFetch(`/schools/${schoolId}/student-voice/meeting-requests/${request.id}/student-identity`, { method: "POST" });
       const identity = data.identity;
       const identitySummary = [
         identity.student_name,
