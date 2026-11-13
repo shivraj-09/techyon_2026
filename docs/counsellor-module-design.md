@@ -37,7 +37,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - Students can create a conversation, send messages, read their own conversation, and request an in-person meeting.
 - Counsellors can list and respond to conversations in their school, subject to counsellor membership and assignment policy.
 - Teachers, parents, and school admins cannot read messages or discover the mapping.
-- A safety escalation must be an explicit, audited workflow with a documented policy; do not silently reveal identity.
+- First counsellor response assigns the conversation; subsequent message, meeting-review, and identity-reveal access is restricted to that assigned counsellor. A safety escalation must be an explicit, audited workflow with a documented policy; do not silently reveal identity.
 - Do not promise absolute anonymity. Explain the limits clearly in the student UI, especially for imminent safety concerns.
 
 ## Proposed data model
@@ -49,7 +49,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - `student_voice_conversations`: school_id, student_user_id (not exposed in API responses), public_ref, status, assigned_counsellor_id nullable, created_at, last_message_at.
 - `student_voice_student_links`: school_id, student_id, student_user_id, status, linked_by; admin-managed account mapping, student self-read, and counsellor reveal only after an approved meeting request.
 - `student_voice_messages`: school_id, conversation_id, sender_kind, sender_user_id, body, created_at, read_at; sender account IDs are not returned by API.
-- `student_voice_meeting_requests`: school_id, conversation_id, requested_by, preferred_times, status, handled_by, created_at. Identity reveal is available only after approval and is written to `student_voice_identity_reveal_audit` before the student record ID is returned.
+- `student_voice_meeting_requests`: school_id, conversation_id, requested_by, preferred_times, status, handled_by, created_at. Identity reveal is available only after approval, is restricted to the assigned counsellor, and is performed by `reveal_student_voice_identity(...)`, a narrowly scoped SECURITY DEFINER RPC that writes `student_voice_identity_reveal_audit` before returning the student record ID. The identity map has no direct counsellor SELECT policy.
 
 ## Authorization principles
 1. All records carry and validate `school_id`; never trust a client-supplied school or role without checking the authenticated membership.
