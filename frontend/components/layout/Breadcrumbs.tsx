@@ -20,6 +20,18 @@ const SEGMENT_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   teacher: "Teacher",
   parent: "Parent",
+  counsellor: "Counsellor",
+  student: "Student Voice",
+  voice: "Student Voice",
+  referrals: "Referrals",
+  cases: "Cases",
+  sessions: "Sessions",
+  notices: "Notices",
+  "student-voice": "Student Voice",
+  "meeting-requests": "Meeting Requests",
+  conversations: "My Conversations",
+  "student-voice-linking": "Student Voice Linking",
+  new: "New",
   children: "My Children",
   profile: "Profile",
   students: "Students",
@@ -48,11 +60,15 @@ export function Breadcrumbs({
     if (items && items.length > 0) return items;
 
     const segments = pathname.split("/").filter(Boolean);
-    const defaultHomeHref = pathname.startsWith("/parent")
-      ? "/parent/dashboard"
-      : pathname.startsWith("/teacher")
-        ? "/teacher/dashboard"
-        : "/dashboard";
+    const defaultHomeHref = pathname.startsWith("/counsellor")
+      ? "/counsellor/dashboard"
+      : pathname.startsWith("/student")
+        ? "/student/voice"
+        : pathname.startsWith("/parent")
+          ? "/parent/dashboard"
+          : pathname.startsWith("/teacher")
+            ? "/teacher/dashboard"
+            : "/dashboard";
     const trail: BreadcrumbItem[] = [
       { label: roleLabel, href: homeHref || defaultHomeHref },
     ];
@@ -63,11 +79,15 @@ export function Breadcrumbs({
     }
 
     const startIndex =
+      segments[0] === "counsellor" ||
+      segments[0] === "student" ||
       segments[0] === "parent" ||
       segments[0] === "teacher" ||
       segments[0] === "admin" ||
       segments[0] === "dashboard"
-        ? 1
+        ? segments[0] === "student" && segments[1] === "voice"
+          ? 2
+          : 1
         : 0;
 
     segments.slice(startIndex).forEach((seg, idx) => {
