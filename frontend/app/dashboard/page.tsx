@@ -60,7 +60,6 @@ async function apiRequest<T>(
     headers: {
       Authorization: `Bearer ${token}`,
       ...(init.body ? { "Content-Type": "application/json" } : {}),
-      ...init.headers,
     },
   });
 
@@ -84,7 +83,11 @@ export default function DashboardPage() {
   const [feeBalances, setFeeBalances] = useState<FeeBalance[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
+  const [attendanceDate, setAttendanceDate] = useState(() => {
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    return now.toISOString().slice(0, 10);
+  });
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState("");
