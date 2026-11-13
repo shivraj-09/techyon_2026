@@ -810,3 +810,20 @@ async def reveal_meeting_request_student_identity(
             "conversation_id": meeting["conversation_id"],
         },
     }
+
+
+@student_voice_router.get("/meeting-requests/mine")
+async def list_my_student_voice_meeting_requests(
+    school_id: UUID,
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Student view of their own meeting requests; RLS filters by requester."""
+    response = await _request(
+        "student_voice_meeting_requests", "GET", credentials,
+        params={
+            "select": "id,school_id,conversation_id,preferred_times,student_message,status,handled_at,created_at",
+            "school_id": f"eq.{school_id}",
+            "order": "created_at.desc",
+        },
+    )
+    return {"success": True, "meeting_requests": _rows(response)}
