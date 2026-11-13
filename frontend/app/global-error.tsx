@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 
 export default function GlobalError({
   error,
@@ -10,7 +10,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("Critical root error caught by GlobalError:", error);
+    console.error("Critical layout error:", error.digest ?? "unexpected");
   }, [error]);
 
   return (
@@ -18,96 +18,140 @@ export default function GlobalError({
       <body
         style={{
           margin: 0,
-          backgroundColor: "#f5f8f8",
-          color: "#17313d",
-          fontFamily: "Arial, Helvetica, sans-serif",
+          minHeight: "100vh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          minHeight: "100vh",
-          padding: "20px",
-          boxSizing: "border-box",
+          padding: "24px",
+          backgroundColor: "#F5F7FA",
+          color: "#212529",
+          fontFamily:
+            'var(--font-dm-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         }}
       >
         <div
+          role="region"
+          aria-label="Unexpected error"
           style={{
-            maxWidth: "440px",
             width: "100%",
-            backgroundColor: "#ffffff",
-            border: "1px solid #e2eaed",
-            borderRadius: "16px",
-            padding: "32px 24px",
-            textAlign: "center",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.05)",
+            maxWidth: "540px",
+            backgroundColor: "#FFFFFF",
+            border: "1px solid #E2E8F0",
+            borderRadius: "12px",
+            boxShadow:
+              "0 14px 28px -6px rgba(1, 43, 91, 0.14), 0 6px 12px -4px rgba(1, 43, 91, 0.06)",
+            overflow: "hidden",
           }}
         >
           <div
             style={{
-              width: "56px",
-              height: "56px",
-              borderRadius: "50%",
-              backgroundColor: "#fef2f2",
-              border: "1px solid #fee2e2",
-              color: "#b91c1c",
+              backgroundColor: "#043873",
+              color: "#FFFFFF",
+              padding: "18px 24px",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 16px",
+              justifyContent: "space-between",
             }}
           >
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+            <span style={{ fontWeight: 700, fontSize: "15px" }}>EduSync</span>
+            <span
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: "#FFE492",
+              }}
             >
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
+              500 Unexpected Error
+            </span>
           </div>
-          <h1
-            style={{
-              fontSize: "22px",
-              margin: "0 0 10px 0",
-              color: "#0f172a",
-            }}
-          >
-            Application Error
-          </h1>
-          <p
-            style={{
-              color: "#6b7e87",
-              fontSize: "14px",
-              lineHeight: "1.6",
-              margin: "0 0 24px 0",
-            }}
-          >
-            A critical system error occurred. Please try reloading the page.
-          </p>
-          <button
-            onClick={() => reset()}
-            style={{
-              width: "100%",
-              padding: "13px 18px",
-              border: 0,
-              borderRadius: "9px",
-              backgroundColor: "#087e78",
-              color: "#ffffff",
-              fontWeight: 700,
-              cursor: "pointer",
-              fontSize: "14px",
-            }}
-          >
-            Reload application
-          </button>
+
+          <div style={{ padding: "28px 24px 24px" }}>
+            <h1
+              style={{
+                margin: "0 0 10px",
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "#212529",
+              }}
+            >
+              Something went wrong on our side
+            </h1>
+            <p
+              style={{
+                margin: "0 0 18px",
+                fontSize: "14.5px",
+                lineHeight: 1.6,
+                color: "#4F5660",
+              }}
+            >
+              We encountered an unexpected error while loading EduSync. You can
+              try reloading this view or return to the login page.
+            </p>
+
+            {error.digest && (
+              <p
+                style={{
+                  margin: "0 0 18px",
+                  fontSize: "12.5px",
+                  color: "#5F6975",
+                }}
+              >
+                Reference ID:{" "}
+                <span
+                  style={{
+                    fontFamily: "monospace",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    backgroundColor: "#F5F7FA",
+                    border: "1px solid #E2E8F0",
+                    color: "#043873",
+                  }}
+                >
+                  {error.digest}
+                </span>
+              </p>
+            )}
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+              <button
+                type="button"
+                onClick={() => reset()}
+                style={{
+                  height: "38px",
+                  padding: "0 16px",
+                  borderRadius: "6px",
+                  border: "none",
+                  backgroundColor: "#1D6CE0",
+                  color: "#FFFFFF",
+                  fontSize: "13.5px",
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                Try Again
+              </button>
+              <a
+                href="/login"
+                style={{
+                  height: "38px",
+                  padding: "0 16px",
+                  borderRadius: "6px",
+                  border: "1px solid #E2E8F0",
+                  backgroundColor: "#FFFFFF",
+                  color: "#212529",
+                  fontSize: "13.5px",
+                  fontWeight: 500,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                }}
+              >
+                Go to Login
+              </a>
+            </div>
+          </div>
         </div>
       </body>
     </html>
   );
 }
-

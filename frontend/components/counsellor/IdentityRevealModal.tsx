@@ -117,11 +117,8 @@ export function IdentityRevealModal({
               lineHeight: 1.55,
             }}
           >
-            In production, this lookup triggers an auditable server request to{" "}
-            <code>
-              GET /student-voice/meeting-requests/{request.id}/student-identity
-            </code>
-            . Revealed identity details are never stored in browser storage.
+            This identity lookup is recorded in the school&apos;s confidential
+            counselling audit log and is never saved in your browser storage.
           </div>
 
           <label

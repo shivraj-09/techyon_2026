@@ -544,7 +544,7 @@ export default function StudentProfilePage() {
                                     textDecoration: "none",
                                   }}
                                 >
-                                  <code>{inv.invoiceId}</code>
+                                  <span className="es-code-ref">{inv.invoiceId}</span>
                                 </Link>
                               </TableCell>
                               <TableCell>
@@ -625,10 +625,10 @@ export default function StudentProfilePage() {
                           {studentPayments.map((pay) => (
                             <TableRow key={pay.id}>
                               <TableCell className="es-table-cell-primary">
-                                <code>{pay.paymentId}</code>
+                                <span className="es-code-ref">{pay.paymentId}</span>
                               </TableCell>
                               <TableCell>
-                                <code>{pay.invoiceId}</code>
+                                <span className="es-code-ref">{pay.invoiceId}</span>
                               </TableCell>
                               <TableCell>{pay.paymentDate}</TableCell>
                               <TableCell>{pay.paymentMethod}</TableCell>
@@ -663,7 +663,7 @@ export default function StudentProfilePage() {
                           {student.feeSummary.payments.map((pay) => (
                             <TableRow key={pay.id}>
                               <TableCell className="es-table-cell-primary">
-                                <code>{pay.receiptNo}</code>
+                                <span className="es-code-ref">{pay.receiptNo}</span>
                               </TableCell>
                               <TableCell>{pay.installment}</TableCell>
                               <TableCell>{pay.date}</TableCell>

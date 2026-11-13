@@ -499,8 +499,7 @@ export function AttendanceMarkingWorkspace({
         {entries.length > 0 && !isLoadingRoster && (
           <CardFooter>
             <span style={{ fontSize: "12.5px", color: "var(--es-text-muted)" }}>
-              Batch submission contract:{" "}
-              <code>POST /schools/&#123;school_id&#125;/classes/{loadedClassId}/attendance</code>
+              All attendance statuses marked above will be saved for this class section.
             </span>
             <Button
               variant="primary"

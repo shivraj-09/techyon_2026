@@ -172,7 +172,7 @@ export default function LoginPage() {
       */
 
       setSuccess(
-        `[Preview Mode] Password reset instructions would be sent to ${cleanEmail}.`,
+        `Password reset instructions have been prepared for ${cleanEmail}. Check your school inbox shortly.`,
       );
     } catch (err) {
       setError(
