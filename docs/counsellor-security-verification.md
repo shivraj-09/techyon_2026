@@ -61,7 +61,7 @@ Apply the existing base migrations first, then the counsellor migrations in file
 4. `202611140004_create_counselling_sessions_notices.sql`
 5. `202611140005_create_student_voice.sql`
 6. `202611140006_enforce_counsellor_workflow_transitions.sql`
-7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`
+7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`\n10. `202611140010_set_session_publication_timestamp.sql`
 
 The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
