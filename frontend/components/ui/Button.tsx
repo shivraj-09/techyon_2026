@@ -1,6 +1,12 @@
 import React from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "dark"
+  | "accent";
 export type ButtonSize = "sm" | "md" | "lg";
 
 export interface ButtonProps
@@ -9,6 +15,7 @@ export interface ButtonProps
   size?: ButtonSize;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  isLoading?: boolean;
 }
 
 export function Button({
@@ -16,6 +23,8 @@ export function Button({
   size = "md",
   leftIcon,
   rightIcon,
+  isLoading = false,
+  disabled,
   className = "",
   children,
   type = "button",
@@ -24,12 +33,18 @@ export function Button({
   return (
     <button
       type={type}
+      disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       className={`es-btn es-btn-${variant} es-btn-${size} ${className}`.trim()}
       {...props}
     >
-      {leftIcon}
+      {isLoading ? (
+        <span className="es-btn-spinner" aria-hidden="true" />
+      ) : (
+        leftIcon
+      )}
       {children}
-      {rightIcon}
+      {!isLoading && rightIcon}
     </button>
   );
 }

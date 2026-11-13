@@ -317,8 +317,7 @@ export function AttendanceRecordDetails({
 
       <CardFooter>
         <span style={{ fontSize: "12px", color: "var(--es-text-muted)" }}>
-          Individual edit contract:{" "}
-          <code>PATCH /schools/&#123;school_id&#125;/attendance/&#123;attendance_id&#125;</code>
+          Updates apply immediately to the selected student&apos;s session record.
         </span>
         <Button variant="secondary" size="sm" onClick={onClose}>
           Done

@@ -278,8 +278,8 @@ export default function DashboardPage() {
             </p>
             <p style={{ margin: 0, color: "var(--es-text-muted)" }}>
               Click <strong>Open {selectedAction.label} Module</strong> below to
-              navigate to <code>{selectedAction.href}</code>, or close this
-              dialog to remain on the Admin Dashboard.
+              open that workspace, or close this dialog to remain on the Admin
+              Dashboard.
             </p>
           </div>
         )}

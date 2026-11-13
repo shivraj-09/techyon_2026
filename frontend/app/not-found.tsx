@@ -1,84 +1,55 @@
-import Link from "next/link";
+"use client";
 
-export default function NotFound() {
-  return (
-    <main>
-      <header className="topbar">
-        <div className="brand">
-          <span className="mark">E</span>EduSync
-        </div>
-        <Link href="/">← Home</Link>
-      </header>
+import React, { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { ErrorState } from "@/components/ui/ErrorState";
 
-      <div className="auth card" style={{ textAlign: "center" }}>
-        <span
-          className="pill"
-          style={{ backgroundColor: "#e0f2fe", color: "#0284c7" }}
-        >
-          404 NOT FOUND
-        </span>
+const ROLE_HOME: Record<string, string> = {
+  admin: "/dashboard",
+  teacher: "/teacher/dashboard",
+  parent: "/parent/dashboard",
+  counsellor: "/counsellor/dashboard",
+  student: "/student/voice",
+};
 
-        <div
-          style={{
-            margin: "20px auto 14px",
-            width: "56px",
-            height: "56px",
-            borderRadius: "50%",
-            backgroundColor: "#f0f9ff",
-            border: "1px solid #e0f2fe",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#0284c7",
-          }}
-        >
-          <svg
-            width="28"
-            height="28"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <path d="M16 16s-1.5-2-4-2-4 2-4 2" />
-            <line x1="9" y1="9" x2="9.01" y2="9" />
-            <line x1="15" y1="9" x2="15.01" y2="9" />
-          </svg>
-        </div>
-
-        <h1 style={{ margin: "0 0 10px 0", fontSize: "24px", color: "#0f172a" }}>
-          Page not found
-        </h1>
-        <p className="muted" style={{ margin: "0 0 24px 0" }}>
-          The page you are looking for doesn’t exist, has been removed, or is
-          temporarily unavailable.
-        </p>
-
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Link href="/" style={{ flex: 1 }}>
-            <button
-              type="button"
-              className="btn"
-              style={{ width: "100%" }}
-            >
-              Return Home
-            </button>
-          </Link>
-          <Link href="/login" style={{ flex: 1 }}>
-            <button
-              type="button"
-              className="btn secondary"
-              style={{ width: "100%" }}
-            >
-              Sign In
-            </button>
-          </Link>
-        </div>
-      </div>
-    </main>
-  );
+function resolveDashboardPath(pathname: string | null): string {
+  if (pathname?.startsWith("/teacher")) return "/teacher/dashboard";
+  if (pathname?.startsWith("/parent")) return "/parent/dashboard";
+  if (pathname?.startsWith("/counsellor")) return "/counsellor/dashboard";
+  if (pathname?.startsWith("/student")) return "/student/voice";
+  if (typeof window !== "undefined") {
+    const saved = sessionStorage.getItem("edusync_demo_role");
+    if (saved && ROLE_HOME[saved]) return ROLE_HOME[saved];
+  }
+  return "/dashboard";
 }
 
+export default function NotFound() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [dashboardHref, setDashboardHref] = useState("/dashboard");
+
+  useEffect(() => {
+    setDashboardHref(resolveDashboardPath(pathname));
+  }, [pathname]);
+
+  return (
+    <ErrorState
+      kind="404"
+      primaryAction={{
+        label: "Go to Dashboard",
+        href: dashboardHref,
+      }}
+      secondaryAction={{
+        label: "Go Back",
+        onClick: () => {
+          if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+          } else {
+            router.push("/");
+          }
+        },
+      }}
+    />
+  );
+}

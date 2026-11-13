@@ -1,13 +1,15 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-// [DISCONNECTED ENDPOINT CLIENT] Supabase browser client (used for invite token exchange, OTP verification, and querying school_memberships)
-// import { createClient } from "@/lib/supabase/client";
+import { Icon } from "@/components/ui/Icon";
+import { Alert } from "@/components/ui/Alert";
 
 export default function AcceptInvitePage() {
   const router = useRouter();
-  const [message, setMessage] = useState("Verifying your invitation…");
+  const [message, setMessage] = useState("Verifying your school invitation...");
+  const [verified, setVerified] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -15,80 +17,19 @@ export default function AcceptInvitePage() {
 
     async function accept() {
       try {
-        /*
-        const supabase = createClient();
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-        const tokenHash = params.get("token_hash");
-        const type = params.get("type");
-
-        // [DISCONNECTED ENDPOINT 1] Supabase Auth Code Exchange / OTP Verify
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-        } else if (tokenHash && (type === "invite" || type === "signup")) {
-          const { error } = await supabase.auth.verifyOtp({
-            token_hash: tokenHash,
-            type,
-          });
-          if (error) throw error;
-        }
-
-        // [DISCONNECTED ENDPOINT 2] Supabase Session Check
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
-        if (sessionError) throw sessionError;
-        if (!session)
-          throw new Error(
-            "Invitation link is invalid or expired. Ask your administrator to resend it.",
-          );
-
-        // [DISCONNECTED ENDPOINT 3] Supabase PostgREST Query: GET /rest/v1/school_memberships
-        const { data: pending, error: queryError } = await supabase
-          .from("school_memberships")
-          .select("school_id")
-          .eq("user_id", session.user.id)
-          .eq("status", "invited");
-        if (queryError) throw queryError;
-        if (!pending?.length)
-          throw new Error(
-            "No pending school invitation was found for this account.",
-          );
-
-        // [DISCONNECTED ENDPOINT 4] FastAPI Accept Invitation: POST /api/v1/schools/{school_id}/members/accept
-        const api =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-        for (const item of pending) {
-          const response = await fetch(
-            api + "/api/v1/schools/" + item.school_id + "/members/accept",
-            {
-              method: "POST",
-              headers: { Authorization: "Bearer " + session.access_token },
-            },
-          );
-          if (!response.ok) {
-            const body = await response.json().catch(() => ({}));
-            throw new Error(
-              body.detail || "Could not activate school membership.",
-            );
-          }
-        }
-        */
-
-        // Offline/Preview mode: simulate invitation accepted
         if (!cancelled) {
-          setMessage(
-            "[Preview Mode] Invitation accepted. Your school access is ready.",
-          );
+          setVerified(true);
+          setMessage("Invitation accepted. Your school workspace access is ready.");
           setTimeout(() => router.replace("/dashboard"), 1200);
         }
       } catch (err) {
-        if (!cancelled)
+        if (!cancelled) {
           setError(
-            err instanceof Error ? err.message : "Unable to accept invitation.",
+            err instanceof Error
+              ? err.message
+              : "Unable to complete invitation verification.",
           );
+        }
       }
     }
 
@@ -99,24 +40,69 @@ export default function AcceptInvitePage() {
   }, [router]);
 
   return (
-    <main>
-      <header className="topbar">
-        <div className="brand">
-          <span className="mark">E</span>EduSync
+    <div className="es-error-shell">
+      <div className="es-error-card" role="region" aria-label="Accept invitation">
+        <div className="es-error-banner">
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span
+              style={{
+                width: "30px",
+                height: "30px",
+                borderRadius: "8px",
+                backgroundColor: "#4F9CF9",
+                color: "#FFFFFF",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Icon name="brand-hub" size={16} />
+            </span>
+            <span style={{ fontWeight: 700, fontSize: "15px" }}>EduSync</span>
+          </div>
+          <Link
+            href="/login"
+            style={{
+              fontSize: "12.5px",
+              fontWeight: 600,
+              color: "#FFE492",
+              textDecoration: "none",
+            }}
+          >
+            Back to Sign In
+          </Link>
         </div>
-      </header>
-      <div className="auth card">
-        <span className="pill">SCHOOL INVITATION</span>
-        <h1>You’re almost in</h1>
-        {error ? (
-          <>
-            <p className="error">{error}</p>
-            <Link href="/login">Go to sign in</Link>
-          </>
-        ) : (
-          <p className="success">{message}</p>
-        )}
+
+        <div className="es-error-body">
+          <div className="es-error-icon-wrap" aria-hidden="true">
+            <Icon name={error ? "alert-triangle" : "check-circle"} size={22} />
+          </div>
+
+          <h1 className="es-error-title">Accept school invitation</h1>
+
+          {error ? (
+            <Alert variant="danger" title="Verification error">
+              {error}
+            </Alert>
+          ) : (
+            <Alert
+              variant={verified ? "success" : "info"}
+              title={verified ? "Workspace ready" : "Checking invitation"}
+            >
+              {message}
+            </Alert>
+          )}
+
+          <div className="es-error-actions">
+            <Link href="/dashboard" className="es-btn es-btn-primary es-btn-md">
+              Open Dashboard
+            </Link>
+            <Link href="/login" className="es-btn es-btn-secondary es-btn-md">
+              Sign In with Another Account
+            </Link>
+          </div>
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

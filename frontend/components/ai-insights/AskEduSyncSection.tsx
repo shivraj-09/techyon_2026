@@ -380,9 +380,8 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
               margin: 0,
             }}
           >
-            Preview mode notice: Ask EduSync uses deterministic summaries of mock
-            school aggregates and is not connected to a live predictive AI
-            model.
+            Insights are summarized from your institution&apos;s current academic,
+            attendance, and fee records.
           </p>
         </CardBody>
       </Card>

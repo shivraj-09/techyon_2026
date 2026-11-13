@@ -37,9 +37,19 @@ export function AppSidebar({
     if (
       href === "/dashboard" ||
       href === "/teacher/dashboard" ||
-      href === "/parent/dashboard"
+      href === "/parent/dashboard" ||
+      href === "/counsellor/dashboard" ||
+      href === "/student/voice" ||
+      href === "/teacher/referrals/new"
     ) {
       return pathname === href;
+    }
+    if (href === "/teacher/referrals") {
+      return (
+        pathname === "/teacher/referrals" ||
+        (pathname.startsWith("/teacher/referrals/") &&
+          pathname !== "/teacher/referrals/new")
+      );
     }
     const normalizeAdminPath = (path: string) =>
       path.startsWith("/admin/") ? path.replace(/^\/admin\//, "/dashboard/") : path;

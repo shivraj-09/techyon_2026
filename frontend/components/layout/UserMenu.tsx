@@ -108,7 +108,9 @@ export function UserMenu({
           >
             Layout Role Preview
           </div>
-          {(["admin", "teacher", "parent"] as UserRole[]).map((r) => {
+          {(
+            ["admin", "teacher", "parent", "counsellor", "student"] as UserRole[]
+          ).map((r) => {
             const active = r === role;
             return (
               <button
