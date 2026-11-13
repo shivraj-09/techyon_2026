@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function PreviewRouteRedirect() {
-  redirect("/teacher/dashboard");
+export default function TeacherReferralRouteRedirect() {
+  redirect("/teacher/referrals");
 }
