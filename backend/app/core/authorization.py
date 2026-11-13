@@ -95,9 +95,32 @@ def require_school_roles(*allowed_roles: str) -> Callable:
         raise ValueError("Provide one or more valid school roles")
 
     async def role_dependency(
-        membership: dict = Depends(get_active_school_membership),
+        school_id: UUID,
+        current_user: dict = Depends(get_current_user),
+        credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     ) -> dict:
-        if membership.get("role") not in allowed_roles:
+        if credentials is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        memberships = await fetch_active_memberships(current_user, credentials)
+        school_memberships = [
+            item for item in memberships
+            if item.get("school_id") == str(school_id)
+            and item.get("role") in allowed_roles
+            and item.get("status") == "active"
+        ]
+        # Respect the endpoint's declared role order when an account has
+        # multiple active roles in the same school.
+        membership = next(
+            (item for role in allowed_roles
+             for item in school_memberships if item.get("role") == role),
+            None,
+        )
+        if membership is None:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Your school role does not permit this action",
