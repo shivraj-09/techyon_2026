@@ -6,6 +6,7 @@ import { ROLE_NAVIGATION, type UserRole } from "@/config/navigation";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import type { BreadcrumbItem } from "./Breadcrumbs";
+import { createClient } from "@/lib/supabase/client";
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -25,14 +26,17 @@ export function AppLayout({
   const isParentRoute =
     defaultRole === "parent" || pathname.startsWith("/parent");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isCounsellorRoute = pathname.startsWith("/counsellor");
   const [role, setRole] = useState<UserRole>(
     isParentRoute
       ? "parent"
       : isTeacherRoute
         ? "teacher"
-        : isAdminRoute
-          ? "admin"
-          : defaultRole,
+        : isCounsellorRoute
+          ? "counsellor"
+          : isAdminRoute
+            ? "admin"
+            : defaultRole,
   );
   const [customEmail, setCustomEmail] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
@@ -65,6 +69,13 @@ export function AppLayout({
       return;
     }
 
+    if (isCounsellorRoute) {
+      setRole("counsellor");
+      if (savedRole === "counsellor" && savedEmail) setCustomEmail(savedEmail);
+      else setCustomEmail(ROLE_NAVIGATION.counsellor.defaultUserEmail);
+      return;
+    }
+
     if (isAdminRoute) {
       setRole("admin");
       if (savedRole === "admin" && savedEmail) {
@@ -81,7 +92,7 @@ export function AppLayout({
     if (savedEmail) {
       setCustomEmail(savedEmail);
     }
-  }, [isAdminRoute, isParentRoute, isTeacherRoute]);
+  }, [isAdminRoute, isParentRoute, isTeacherRoute, isCounsellorRoute]);
 
   const currentProfile = ROLE_NAVIGATION[role];
   const resolvedEmail = customEmail || currentProfile.defaultUserEmail;
@@ -126,7 +137,9 @@ export function AppLayout({
       sessionStorage.setItem("edusync_demo_role", nextRole);
       sessionStorage.setItem("edusync_demo_email", nextEmail);
     }
-    if (nextRole === "parent") {
+    if (nextRole === "counsellor") {
+      router.push("/counsellor/dashboard");
+    } else if (nextRole === "parent") {
       router.push("/parent/dashboard");
     } else if (nextRole === "teacher") {
       router.push("/teacher/dashboard");
