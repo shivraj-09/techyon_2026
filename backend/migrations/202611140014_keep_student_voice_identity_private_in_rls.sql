@@ -67,18 +67,8 @@ with check (
         )
         or (
             sender_kind = 'counsellor'
-            and exists (
-                select 1
-                from public.student_voice_conversations c
-                join public.school_memberships m
-                  on m.school_id = c.school_id
-                 and m.user_id = (select auth.uid())
-                 and m.role = 'counsellor'::public.membership_role
-                 and m.status = 'active'::public.membership_status
-                where c.id = student_voice_messages.conversation_id
-                  and c.school_id = student_voice_messages.school_id
-                  and c.assigned_counsellor_id = (select auth.uid())
-                  and c.status = 'open'
+            and public.student_voice_counsellor_can_message_conversation(
+                school_id, conversation_id
             )
         )
     )
