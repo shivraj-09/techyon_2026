@@ -18,7 +18,7 @@ create table if not exists public.counselling_sessions (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint counselling_sessions_school_class_fk
-        foreign key (school_id, class_id) references public.classes(school_id, id),
+        foreign key (class_id, school_id) references public.classes(id, school_id),
     constraint counselling_sessions_time_check check (ends_at > starts_at),
     constraint counselling_sessions_class_audience_check check (class_id is null or audience = 'students')
 );
