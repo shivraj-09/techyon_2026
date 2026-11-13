@@ -123,3 +123,62 @@ class CounsellorRoleDependencyTests(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException) as raised:
             await dependency(membership)
         self.assertEqual(raised.exception.status_code, 403)
+
+
+
+class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
+    async def test_admin_revocation_is_conditional_and_school_scoped(self):
+        from unittest.mock import AsyncMock, patch
+        from uuid import UUID
+
+        import httpx
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        link_id = UUID("00000000-0000-0000-0000-000000000010")
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        lookup = httpx.Response(200, json=[{"id": str(link_id), "status": "active"}])
+        update = httpx.Response(200, json=[{"id": str(link_id), "school_id": str(school_id), "status": "revoked"}])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(side_effect=[lookup, update])) as request:
+            result = await counsellor.revoke_student_voice_link(
+                school_id=school_id,
+                link_id=link_id,
+                _admin={"role": "admin"},
+                credentials=credentials,
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["link"]["status"], "revoked")
+        self.assertEqual(request.await_count, 2)
+        update_call = request.await_args_list[1]
+        self.assertEqual(update_call.args[:2], ("student_voice_student_links", "PATCH"))
+        self.assertEqual(update_call.kwargs["params"]["school_id"], f"eq.{school_id}")
+        self.assertEqual(update_call.kwargs["params"]["status"], "eq.active")
+        self.assertEqual(update_call.kwargs["payload"], {"status": "revoked"})
+
+    async def test_already_revoked_link_is_not_updated_again(self):
+        from unittest.mock import AsyncMock, patch
+
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        link_id = UUID("00000000-0000-0000-0000-000000000010")
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        lookup = httpx.Response(200, json=[{"id": str(link_id), "status": "revoked"}])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(return_value=lookup)) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.revoke_student_voice_link(
+                    school_id=school_id,
+                    link_id=link_id,
+                    _admin={"role": "admin"},
+                    credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        request.assert_awaited_once()
