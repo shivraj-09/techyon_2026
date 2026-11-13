@@ -28,7 +28,7 @@ class PaymentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
-    payment_method: Literal["cash", "upi", "bank_transfer", "card", "cheque", "other"]
+    payment_method: Literal["cash", "upi", "bank_transfer", "card", "other"]
     reference_number: str | None = Field(default=None, max_length=100)
 
     @field_validator("reference_number")
