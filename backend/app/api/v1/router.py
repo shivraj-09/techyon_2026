@@ -1,10 +1,11 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, classes, memberships, students, teacher_assignments
+from app.api.v1 import attendance, auth, classes, memberships, students, teacher_assignments
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(memberships.router)
 api_router.include_router(classes.router)
 api_router.include_router(students.router)
+api_router.include_router(attendance.router)
 api_router.include_router(teacher_assignments.router)
