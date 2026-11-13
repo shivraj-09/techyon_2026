@@ -162,6 +162,7 @@ export function AppLayout({
     if (typeof window !== "undefined") {
       sessionStorage.removeItem("edusync_demo_email");
       sessionStorage.removeItem("edusync_demo_role");
+      sessionStorage.removeItem("edusync_active_school_id");
     }
     router.replace("/login");
     router.refresh();
