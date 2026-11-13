@@ -728,3 +728,32 @@ class StudentVoiceAuthAccessTests(IsolatedAsyncioTestCase):
         with self.assertRaises(HTTPException) as raised:
             await read_my_student_voice_access(current_user={"id": "auth-user-1"}, credentials=None)
         self.assertEqual(raised.exception.status_code, 401)
+
+
+class CanonicalSchemaSnapshotTests(TestCase):
+    """Guard the recovered, read-only baseline without treating it as an active migration."""
+
+    @classmethod
+    def setUpClass(cls):
+        from pathlib import Path
+        root = Path(__file__).resolve().parents[1] / "schema_snapshots"
+        cls.initial = (root / "20261113075326_edusync_initial_schema.sql").read_text().lower()
+        cls.hardening = (root / "20261113075340_edusync_schema_hardening.sql").read_text().lower()
+        cls.privileges = (root / "20261113075415_edusync_api_privilege_hardening.sql").read_text().lower()
+
+    def test_snapshot_contains_foundational_tables_and_rls(self):
+        for table in ("schools", "school_memberships", "students", "classes", "student_enrollments", "class_teacher_assignments"):
+            self.assertIn(f"create table if not exists public.{table}", self.initial)
+            self.assertIn(f"alter table public.{table} enable row level security", self.initial)
+
+    def test_snapshot_is_schema_only_and_contains_no_seed_rows(self):
+        self.assertNotRegex(self.initial, r"\\binsert\\s+into\\b")
+        self.assertNotIn("copy ", self.initial)
+        self.assertIn("create policy", self.initial)
+        self.assertIn("with (security_invoker = true)", self.initial)
+
+    def test_hardening_and_api_privileges_are_preserved(self):
+        self.assertIn("set search_path = pg_catalog, public", self.hardening)
+        self.assertIn("create index if not exists idx_class_teacher_class_school", self.hardening)
+        self.assertIn("revoke all privileges on all tables in schema public from anon", self.privileges)
+        self.assertIn("grant select, insert, update, delete on all tables in schema public to authenticated", self.privileges)
