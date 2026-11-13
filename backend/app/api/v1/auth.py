@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.authorization import fetch_active_memberships
@@ -19,9 +19,16 @@ async def read_current_user(current_user: dict = Depends(get_current_user)):
 @router.get("/memberships")
 async def read_my_memberships(
     current_user: dict = Depends(get_current_user),
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
 ):
     """Return active school memberships visible to the signed-in user under RLS."""
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     memberships = await fetch_active_memberships(current_user, credentials)
     return {
         "success": True,
