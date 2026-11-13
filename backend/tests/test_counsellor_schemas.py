@@ -568,3 +568,79 @@ class StudentVoiceAssignmentRaceRouteTests(IsolatedAsyncioTestCase):
         self.assertEqual(request.await_count, 3)
         self.assertEqual(request.await_args_list[2].args[:2], ("student_voice_conversations", "PATCH"))
 
+
+
+class CounsellingPublicationRouteTests(IsolatedAsyncioTestCase):
+    async def test_session_publish_is_creator_scoped_and_uses_compare_and_set(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+        from app.schemas.counsellor import CounsellingSessionStatusUpdate
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        session_id = UUID("00000000-0000-0000-0000-000000000060")
+        user = {"id": "00000000-0000-0000-0000-000000000040"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        existing = httpx.Response(200, json=[{"id": str(session_id), "status": "draft", "created_by": user["id"]}])
+        updated = httpx.Response(200, json=[{"id": str(session_id), "status": "published"}])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(side_effect=[existing, updated])) as request:
+            result = await counsellor.update_counselling_session_status(
+                school_id, session_id, CounsellingSessionStatusUpdate(status="published"),
+                current_user=user, _counsellor={"role": "counsellor"}, credentials=credentials,
+            )
+
+        self.assertEqual(result["session"]["status"], "published")
+        self.assertEqual(request.await_count, 2)
+        self.assertEqual(request.await_args_list[1].kwargs["params"]["status"], "eq.draft")
+        self.assertEqual(request.await_args_list[1].kwargs["payload"], {"status": "published"})
+
+    async def test_session_publish_rejects_non_creator(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+        from app.schemas.counsellor import CounsellingSessionStatusUpdate
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        session_id = UUID("00000000-0000-0000-0000-000000000060")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        existing = httpx.Response(200, json=[{"id": str(session_id), "status": "draft", "created_by": "other-user"}])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(return_value=existing)) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.update_counselling_session_status(
+                    school_id, session_id, CounsellingSessionStatusUpdate(status="published"),
+                    current_user={"id": "current-user"}, _counsellor={"role": "counsellor"}, credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 403)
+        request.assert_awaited_once()
+
+    async def test_notice_publish_uses_conditional_status_update(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+        from app.schemas.counsellor import CounsellingNoticeStatusUpdate
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        notice_id = UUID("00000000-0000-0000-0000-000000000070")
+        user = {"id": "00000000-0000-0000-0000-000000000040"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        existing = httpx.Response(200, json=[{"id": str(notice_id), "status": "draft", "created_by": user["id"]}])
+        updated = httpx.Response(200, json=[{"id": str(notice_id), "status": "published"}])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(side_effect=[existing, updated])) as request:
+            result = await counsellor.update_counselling_notice_status(
+                school_id, notice_id, CounsellingNoticeStatusUpdate(status="published"),
+                current_user=user, _counsellor={"role": "counsellor"}, credentials=credentials,
+            )
+
+        self.assertEqual(result["notice"]["status"], "published")
+        self.assertEqual(request.await_args_list[1].kwargs["params"]["status"], "eq.draft")
