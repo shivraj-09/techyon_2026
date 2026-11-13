@@ -27,6 +27,23 @@ type Student = {
   date_of_birth: string | null;
   status: string;
 };
+type FeeBalance = {
+  invoice_id: string;
+  student_id: string;
+  invoice_number: string;
+  amount_due: string | number;
+  amount_paid: string | number;
+  outstanding_amount: string | number;
+  due_date: string;
+  status: string;
+};
+type AttendanceRecord = {
+  id: string;
+  student_id: string;
+  attendance_date: string;
+  status: "present" | "absent" | "late" | "excused";
+  remarks: string | null;
+};
 
 const apiBase = (
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
@@ -64,11 +81,15 @@ export default function DashboardPage() {
   const [schoolId, setSchoolId] = useState("");
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [feeBalances, setFeeBalances] = useState<FeeBalance[]>([]);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [dataLoading, setDataLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "students">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "students" | "attendance" | "fees">("overview");
   const [classFormOpen, setClassFormOpen] = useState(false);
   const [studentFormOpen, setStudentFormOpen] = useState(false);
   const [className, setClassName] = useState("");
@@ -142,16 +163,45 @@ export default function DashboardPage() {
       ]);
       setClasses(classResult.classes || []);
       setStudents(studentResult.students || []);
+      if (!selectedClassId && classResult.classes?.length) {
+        setSelectedClassId(classResult.classes[0].id);
+      }
+      const feeResult = await apiRequest<{ balances: FeeBalance[] }>(
+        `/api/v1/schools/${schoolId}/fees/balances?limit=100`,
+        token,
+      ).catch(() => ({ balances: [] }));
+      setFeeBalances(feeResult.balances || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load school data.");
     } finally {
       setDataLoading(false);
     }
-  }, [schoolId, token]);
+  }, [schoolId, token, selectedClassId]);
 
   useEffect(() => {
     void loadSchoolData();
   }, [loadSchoolData]);
+
+  const loadAttendance = useCallback(async () => {
+    if (!token || !schoolId || !selectedClassId || !attendanceDate) {
+      setAttendanceRecords([]);
+      return;
+    }
+    try {
+      const result = await apiRequest<{ records: AttendanceRecord[] }>(
+        `/api/v1/schools/${schoolId}/classes/${selectedClassId}/attendance?attendance_date=${attendanceDate}`,
+        token,
+      );
+      setAttendanceRecords(result.records || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load attendance.");
+      setAttendanceRecords([]);
+    }
+  }, [attendanceDate, schoolId, selectedClassId, token]);
+
+  useEffect(() => {
+    if (activeTab === "attendance") void loadAttendance();
+  }, [activeTab, loadAttendance]);
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -286,7 +336,7 @@ export default function DashboardPage() {
             )}
 
             <nav className="row" aria-label="School modules" style={{ gap: 8, flexWrap: "wrap", margin: "20px 0" }}>
-              {(["overview", "classes", "students"] as const).map((tab) => (
+              {(["overview", "classes", "students", "attendance", "fees"] as const).map((tab) => (
                 <button
                   key={tab}
                   className={activeTab === tab ? "btn" : "btn secondary"}
@@ -310,6 +360,7 @@ export default function DashboardPage() {
                     <section className="grid">
                       <article className="stat"><span className="muted">Classes</span><h2>{classes.length}</h2></article>
                       <article className="stat"><span className="muted">Student records</span><h2>{students.length}</h2></article>
+                      <article className="stat"><span className="muted">Outstanding fees</span><h2>₹{feeBalances.reduce((sum, item) => sum + Number(item.outstanding_amount || 0), 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</h2></article>
                       <article className="stat"><span className="muted">Your role</span><h2 style={{ textTransform: "capitalize" }}>{activeMembership?.role}</h2></article>
                     </section>
                     <section className="grid">
@@ -349,6 +400,64 @@ export default function DashboardPage() {
                           <tbody>{classes.map((item) => (
                             <tr key={item.id} style={{ borderTop: "1px solid #e2eaed" }}>
                               <td style={{ padding: 10 }}>{item.name}</td><td style={{ padding: 10 }}>{item.grade_level || "—"}</td><td style={{ padding: 10 }}>{item.section || "—"}</td><td style={{ padding: 10 }}>{item.academic_year}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {activeTab === "attendance" && (
+                  <section className="card">
+                    <h2>Attendance</h2>
+                    <p className="muted">Review attendance recorded for a class and date.</p>
+                    <div className="row" style={{ flexWrap: "wrap", margin: "16px 0" }}>
+                      <label className="field" style={{ minWidth: 220 }}>Class
+                        <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)}>
+                          {classes.map((item) => <option key={item.id} value={item.id}>{item.name}{item.section ? ` · ${item.section}` : ""}</option>)}
+                        </select>
+                      </label>
+                      <label className="field">Date
+                        <input type="date" value={attendanceDate} onChange={(e) => setAttendanceDate(e.target.value)} />
+                      </label>
+                      <button className="btn secondary" onClick={() => void loadAttendance()}>Load attendance</button>
+                    </div>
+                    {attendanceRecords.length === 0 ? <p className="muted">No attendance records found for this class and date.</p> : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                          <thead><tr><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Status</th><th style={{ padding: 10 }}>Remarks</th></tr></thead>
+                          <tbody>{attendanceRecords.map((record) => {
+                            const student = students.find((item) => item.id === record.student_id);
+                            return <tr key={record.id} style={{ borderTop: "1px solid #e2eaed" }}>
+                              <td style={{ padding: 10 }}>{student ? `${student.first_name} ${student.last_name || ""}` : record.student_id}</td>
+                              <td style={{ padding: 10 }}>{student?.admission_no || "—"}</td>
+                              <td style={{ padding: 10, textTransform: "capitalize" }}>{record.status}</td>
+                              <td style={{ padding: 10 }}>{record.remarks || "—"}</td>
+                            </tr>;
+                          })}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {activeTab === "fees" && (
+                  <section className="card">
+                    <h2>Fee balances</h2>
+                    <p className="muted">Outstanding balances returned by the school's fee API. Payment recording remains an admin-only workflow.</p>
+                    <div className="grid">
+                      <article className="stat"><span className="muted">Invoices</span><h2>{feeBalances.length}</h2></article>
+                      <article className="stat"><span className="muted">Total invoiced</span><h2>₹{feeBalances.reduce((sum, item) => sum + Number(item.amount_due || 0), 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</h2></article>
+                      <article className="stat"><span className="muted">Outstanding</span><h2>₹{feeBalances.reduce((sum, item) => sum + Number(item.outstanding_amount || 0), 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</h2></article>
+                    </div>
+                    {feeBalances.length === 0 ? <p className="muted">No fee balances are available for this account.</p> : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                          <thead><tr><th style={{ padding: 10 }}>Invoice</th><th style={{ padding: 10 }}>Due date</th><th style={{ padding: 10 }}>Amount due</th><th style={{ padding: 10 }}>Paid</th><th style={{ padding: 10 }}>Outstanding</th><th style={{ padding: 10 }}>Status</th></tr></thead>
+                          <tbody>{feeBalances.map((item) => (
+                            <tr key={item.invoice_id} style={{ borderTop: "1px solid #e2eaed" }}>
+                              <td style={{ padding: 10 }}>{item.invoice_number}</td><td style={{ padding: 10 }}>{item.due_date}</td><td style={{ padding: 10 }}>₹{Number(item.amount_due).toLocaleString("en-IN")}</td><td style={{ padding: 10 }}>₹{Number(item.amount_paid).toLocaleString("en-IN")}</td><td style={{ padding: 10 }}>₹{Number(item.outstanding_amount).toLocaleString("en-IN")}</td><td style={{ padding: 10, textTransform: "capitalize" }}>{item.status.replaceAll("_", " ")}</td>
                             </tr>
                           ))}</tbody>
                         </table>
