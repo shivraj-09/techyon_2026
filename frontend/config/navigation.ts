@@ -69,6 +69,12 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         badge: "3",
       },
       {
+        id: "student-voice-links",
+        label: "Student Voice Access",
+        href: "/dashboard/student-voice-links",
+        icon: "users",
+      },
+      {
         id: "ai-insights",
         label: "AI Insights",
         href: "/admin/ai-insights",
