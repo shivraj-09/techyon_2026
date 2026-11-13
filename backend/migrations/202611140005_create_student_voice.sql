@@ -10,7 +10,7 @@ create table if not exists public.student_voice_student_links (
     linked_by uuid not null references auth.users(id) on delete restrict,
     created_at timestamptz not null default now(),
     constraint student_voice_links_school_student_fk
-        foreign key (school_id, student_id) references public.students(school_id, id),
+        foreign key (student_id, school_id) references public.students(id, school_id),
     constraint student_voice_links_one_student unique (school_id, student_id),
     constraint student_voice_links_one_user unique (school_id, student_user_id)
 );
