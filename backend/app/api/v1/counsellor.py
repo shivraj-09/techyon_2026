@@ -653,6 +653,34 @@ async def send_student_voice_message(
         membership = await get_active_school_membership(school_id, current_user, credentials)
         if membership.get("role") != "counsellor":
             raise HTTPException(status_code=403, detail="Only the student or a school counsellor can send messages")
+        conversation_rows = _rows(await _request(
+            "student_voice_conversations", "GET", credentials,
+            params={
+                "select": "id,status,assigned_counsellor_id",
+                "id": f"eq.{conversation_id}",
+                "school_id": f"eq.{school_id}",
+                "limit": "1",
+            },
+        ))
+        if not conversation_rows:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        conversation = conversation_rows[0]
+        if conversation.get("assigned_counsellor_id") not in (None, current_user["id"]):
+            raise HTTPException(status_code=409, detail="Conversation is assigned to another counsellor")
+        if conversation.get("status") != "open":
+            raise HTTPException(status_code=409, detail="Conversation is closed")
+        if conversation.get("assigned_counsellor_id") is None:
+            assignment = await _request(
+                "student_voice_conversations", "PATCH", credentials,
+                params={
+                    "id": f"eq.{conversation_id}",
+                    "school_id": f"eq.{school_id}",
+                    "assigned_counsellor_id": "is.null",
+                },
+                payload={"assigned_counsellor_id": current_user["id"]},
+            )
+            if assignment.status_code != 200:
+                raise HTTPException(status_code=409, detail="Could not assign conversation to this counsellor")
         sender_kind = "counsellor"
 
     response = await _request(
