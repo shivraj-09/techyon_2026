@@ -50,3 +50,48 @@ jobs:
           SUPABASE_URL: https://example.supabase.co
           SUPABASE_PUBLISHABLE_KEY: example-publishable-key
         run: python -m unittest discover -s backend/tests -v
+
+  postgres-migrations:
+    name: PostgreSQL counsellor migration smoke test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: edusync_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d edusync_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+      - name: Bootstrap synthetic baseline schema
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 \\
+            -f backend/tests/sql/bootstrap_counsellor_migrations.sql
+      - name: Apply counsellor migrations in order
+        env:
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          for migration in backend/migrations/20261114*.sql; do
+            echo "Applying $migration"
+            psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Assert migrated schema, RLS and lifecycle triggers
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 \\
+            -f backend/tests/sql/verify_counsellor_migrations.sql
