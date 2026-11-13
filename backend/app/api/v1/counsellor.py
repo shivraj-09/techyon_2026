@@ -216,6 +216,8 @@ async def review_referral(
             "select": "id,school_id,student_id,class_id,submitted_by,category,summary,urgency,status,assigned_counsellor_id,created_at,updated_at",
             "id": f"eq.{referral_id}",
             "school_id": f"eq.{school_id}",
+            "status": f"eq.{existing['status']}",
+            "assigned_counsellor_id": "is.null" if existing.get("assigned_counsellor_id") is None else f"eq.{current_user['id']}",
         },
         payload=changes,
     )
@@ -223,7 +225,7 @@ async def review_referral(
         raise HTTPException(status_code=502, detail="Could not update referral")
     rows = _rows(response)
     if not rows:
-        raise HTTPException(status_code=404, detail="Referral not found")
+        raise HTTPException(status_code=409, detail="Referral was updated by another counsellor; refresh and try again")
     return {"success": True, "referral": rows[0]}
 
 cases_router = APIRouter(prefix="/schools/{school_id}/counselling/cases", tags=["Counselling Cases"])
