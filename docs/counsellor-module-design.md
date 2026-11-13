@@ -26,8 +26,8 @@ This is the recommended default inferred from the project discussion; confirm be
 - Every read/write to highly sensitive case content should be auditable at the API layer. Avoid logging note bodies or message bodies.
 
 ### 3. Sessions and notices
-- Counsellors create sessions with audience (students, parents, teachers), title, description, start/end, capacity, location/meeting mode, and publication status.
-- Notices are published to the intended audience only.
+- Counsellors create sessions with audience (students, parents, teachers), title, description, start/end, capacity, location/meeting mode, and publication status. Initial API and schema are committed. Active parent and teacher memberships can read published items addressed to their role. Student delivery is pending because the current schema has no authenticated student-to-user mapping.
+- Notices support audience, optional class targeting for student notices, scheduled publication, expiry, and draft/published/cancelled status. Parent/teacher reads are filtered by RLS. Student-targeted delivery remains pending student authentication mapping.
 - Registrations are scoped to the school and session. Attendance/registration visibility is limited to the counsellor and the registrant as appropriate.
 - Parent-facing sessions must not expose student counselling case details.
 
@@ -44,8 +44,8 @@ This is the recommended default inferred from the project discussion; confirm be
 - `counsellor_referrals`: school_id, student_id, submitted_by, category, summary, urgency, status, assigned_counsellor_id, timestamps.
 - `counselling_cases`: school_id, student_id, required referral_id, assigned_counsellor_id, status, opened_at, closed_at.
 - `counselling_case_notes`: case_id, author_user_id, note_body, created_at (append-only).
-- `counselling_sessions`: school_id, created_by, title, description, audience, starts_at, ends_at, capacity, location, status.
-- `counselling_session_registrations`: session_id, school_id, registrant_user_id nullable, student_id nullable, status, created_at.
+- `counselling_sessions`: school_id, created_by, title, description, audience, optional class_id for students, starts_at, ends_at, capacity, location, meeting_mode, status, published_at.
+- `counselling_session_registrations`: planned; not yet implemented.
 - `student_voice_conversations`: school_id, public_ref, status, assigned_counsellor_id nullable, created_at, last_message_at.
 - `student_voice_identity_map`: conversation_id, student_id, created_at; strict counsellor-only access and never joined into normal conversation/message list endpoints.
 - `student_voice_messages`: conversation_id, sender_kind, sender_user_id nullable, body, created_at, read_at.
@@ -64,7 +64,7 @@ This is the recommended default inferred from the project discussion; confirm be
 ## API modules (planned)
 - `/schools/{school_id}/counsellor/referrals`: teacher create/list-own; counsellor school inbox/list and review/status transitions. Implemented in `backend/app/api/v1/counsellor.py` with request models in `backend/app/schemas/counsellor.py`.
 - `/schools/{school_id}/counselling/cases`: counsellor-only case creation from accepted referrals, case listing/status, and private append-only notes. Implemented in `backend/app/api/v1/counsellor.py`.
-- `/schools/{school_id}/counselling/sessions`: create, publish, list, register, cancel.
+- `/schools/{school_id}/counselling/sessions`: counsellor create and audience-filtered list. `/schools/{school_id}/counselling/notices`: counsellor create and audience-filtered list. Implemented in `backend/app/api/v1/counsellor.py`; registration and cancellation workflows remain pending.
 - `/schools/{school_id}/student-voice/conversations`: student create/list own, counsellor inbox.
 - `/schools/{school_id}/student-voice/conversations/{conversation_id}/messages`: read/send with strict conversation membership checks.
 - `/schools/{school_id}/student-voice/meeting-requests`: student request and counsellor handling.
@@ -75,6 +75,7 @@ This is the recommended default inferred from the project discussion; confirm be
 3. Add schema and RLS migrations; review with Supabase advisors before applying to the hosted project.
 4. Implement referral intake/review API and test school/class isolation. (Initial code and migration are committed; runtime tests and live migration are pending.)
 5. Implement confidential cases and private notes. (Schema, RLS, and API routes are committed; runtime tests and live migration are pending.)
+6. Implement counselling sessions and notices. (Schema, RLS, and create/list APIs are committed; student audience delivery, registrations, runtime tests, and live migration are pending.)
 5. Implement private cases and audit events.
 6. Implement sessions/notices.
 7. Implement Student Voice, pseudonymous identity separation, meeting requests, and safety escalation.
