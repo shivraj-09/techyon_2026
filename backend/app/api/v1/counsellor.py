@@ -772,7 +772,7 @@ async def review_student_voice_meeting_request(
     existing_rows = _rows(await _request(
         "student_voice_meeting_requests", "GET", credentials,
         params={
-            "select": "id,status",
+            "select": "id,status,conversation_id",
             "id": f"eq.{request_id}",
             "school_id": f"eq.{school_id}",
             "limit": "1",
