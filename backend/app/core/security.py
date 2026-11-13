@@ -59,4 +59,5 @@ async def get_current_user(
     return {
         "id": user_id,
         "email": user.get("email"),
+        "email_confirmed_at": user.get("email_confirmed_at"),
     }
