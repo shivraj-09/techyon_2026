@@ -157,3 +157,11 @@ class StudentVoiceMeetingRequestCreate(BaseModel):
 
 class StudentVoiceMeetingReview(BaseModel):
     status: Literal["approved", "declined", "completed"]
+
+
+class CounsellingSessionStatusUpdate(BaseModel):
+    status: Literal["published", "cancelled", "completed"]
+
+
+class CounsellingNoticeStatusUpdate(BaseModel):
+    status: Literal["published", "cancelled"]
