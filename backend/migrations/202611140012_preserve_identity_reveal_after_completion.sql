@@ -45,6 +45,14 @@ begin
        and mr.school_id = p_school_id
        and mr.status in ('approved', 'completed')
        and c.assigned_counsellor_id = (select auth.uid())
+       and c.student_user_id <> (select auth.uid())
+       and not exists (
+           select 1
+           from public.student_voice_student_links own_link
+           where own_link.school_id = c.school_id
+             and own_link.student_user_id = (select auth.uid())
+             and own_link.status = 'active'
+       )
      limit 1
      for share of l;
 
