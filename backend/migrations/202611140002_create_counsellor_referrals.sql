@@ -1,8 +1,5 @@
 -- Counsellor referral intake. This migration is committed to the feature branch only;
 -- it is NOT applied to the connected Supabase project.
--- Composite unique keys support school-scoped foreign keys (UUID primary keys remain unchanged).
-alter table public.students add constraint students_school_id_id_key unique (school_id, id);
-alter table public.classes add constraint classes_school_id_id_key unique (school_id, id);
 create table if not exists public.counsellor_referrals (
     id uuid primary key default gen_random_uuid(),
     school_id uuid not null,
@@ -17,9 +14,9 @@ create table if not exists public.counsellor_referrals (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     constraint counsellor_referrals_school_student_fk
-        foreign key (school_id, student_id) references public.students(school_id, id),
+        foreign key (student_id, school_id) references public.students(id, school_id),
     constraint counsellor_referrals_school_class_fk
-        foreign key (school_id, class_id) references public.classes(school_id, id)
+        foreign key (class_id, school_id) references public.classes(id, school_id)
 );
 
 create index if not exists counsellor_referrals_school_status_created_idx
