@@ -149,43 +149,50 @@ async def record_payment(
     school_id: UUID,
     invoice_id: UUID,
     payload: PaymentCreate,
-    current_user: dict = Depends(get_current_user),
     _admin: dict = Depends(require_school_roles("admin")),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
-    balances = _rows(await _request(
-        "fee_invoice_balances", "GET", credentials,
-        params={
-            "select": "invoice_id,outstanding_amount,status",
-            "invoice_id": f"eq.{invoice_id}",
-            "school_id": f"eq.{school_id}",
-        },
-    ))
-    if not balances:
-        raise HTTPException(status_code=404, detail="Invoice not found in this school")
-    balance = Decimal(str(balances[0]["outstanding_amount"]))
-    if balance <= 0:
-        raise HTTPException(status_code=409, detail="Invoice has no outstanding balance")
-    if payload.amount > balance:
-        raise HTTPException(status_code=422, detail=f"Payment exceeds outstanding balance of {balance}")
-
+    # The database RPC locks the invoice row, recalculates the balance, and
+    # inserts the payment in one transaction. Never pre-check balance here:
+    # doing so would reintroduce a race between concurrent requests.
     response = await _request(
-        "fee_payments", "POST", credentials,
-        params={"select": PAYMENT_FIELDS},
+        "rpc/record_fee_payment",
+        "POST",
+        credentials,
         payload={
-            "school_id": str(school_id),
-            "invoice_id": str(invoice_id),
-            **payload.model_dump(mode="json"),
-            "recorded_by": current_user["id"],
-            "status": "successful",
+            "p_school_id": str(school_id),
+            "p_invoice_id": str(invoice_id),
+            "p_amount": str(payload.amount),
+            "p_payment_method": payload.payment_method,
+            "p_reference_number": payload.reference_number,
         },
     )
-    if response.status_code not in (200, 201):
+
+    if response.status_code != 200:
+        try:
+            error = response.json()
+            code = error.get("code")
+            message = error.get("message", "")
+        except (ValueError, AttributeError):
+            code, message = None, ""
+
+        if code == "P0002":
+            raise HTTPException(status_code=404, detail="Invoice not found in this school")
+        if code == "42501":
+            raise HTTPException(status_code=403, detail="Active school admin membership required")
+        if code == "23514":
+            raise HTTPException(status_code=409, detail="Payment exceeds the outstanding balance or invoice is not payable")
+        if code == "22023":
+            raise HTTPException(status_code=422, detail="Invalid payment amount, method, or invoice state")
         raise HTTPException(status_code=502, detail="Could not record fee payment")
-    rows = _rows(response, allowed=(200, 201))
-    if not rows:
-        raise HTTPException(status_code=502, detail="Payment recorded but no record was returned")
-    return {"success": True, "payment": rows[0]}
+
+    try:
+        payment = response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="Invalid payment service response")
+    if not isinstance(payment, dict) or not payment.get("id"):
+        raise HTTPException(status_code=502, detail="Payment service returned an invalid record")
+    return {"success": True, "payment": payment}
 
 
 @router.get("/invoices/{invoice_id}/payments")
