@@ -45,7 +45,8 @@ begin
        and mr.school_id = p_school_id
        and mr.status in ('approved', 'completed')
        and c.assigned_counsellor_id = (select auth.uid())
-     limit 1;
+     limit 1
+     for share of l;
 
     if v_student_id is null then
         raise exception 'Approved meeting request not found or access denied' using errcode = '42501';
