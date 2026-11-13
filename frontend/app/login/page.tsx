@@ -16,7 +16,12 @@ interface RoleOption {
 }
 
 const ROLES: RoleOption[] = [
-  
+  {
+    id: "student",
+    title: "Student",
+    subtitle: "Student Voice",
+    sampleEmail: "student@institution.in",
+  },
   {
     id: "parent",
     title: "Parent",
@@ -87,6 +92,26 @@ export default function LoginPage() {
 
       const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
       const api = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+      if (selectedRole === "student") {
+        const accessResponse = await fetch(`${api}/api/v1/auth/student-voice-access`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        });
+        if (!accessResponse.ok) throw new Error("Could not verify Student Voice access.");
+        const accessData = await accessResponse.json();
+        const link = Array.isArray(accessData.access) ? accessData.access[0] : null;
+        if (!link?.school_id) {
+          await supabase.auth.signOut();
+          throw new Error("This account is not linked to Student Voice. Ask your school administrator to enable access.");
+        }
+        sessionStorage.setItem("edusync_demo_email", authData.user.email || cleanInput);
+        sessionStorage.setItem("edusync_demo_role", "student");
+        sessionStorage.setItem("edusync_active_school_id", link.school_id);
+        router.replace("/student-voice");
+        router.refresh();
+        return;
+      }
+
       const membershipResponse = await fetch(`${api}/api/v1/auth/memberships`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         cache: "no-store",
