@@ -44,7 +44,7 @@ The expanded counsellor/student route set from the frontend preview branch is no
 
 ## Database verification and deployment safety
 
-- The 15 counsellor/Student Voice SQL migrations under `backend/migrations/20261114*.sql` are applied in order by GitHub Actions to a disposable PostgreSQL 17 service. The workflow checks schema/RLS assertions, multi-school behaviour, Student Voice access revocation, dual-role restrictions, and trigger permissions.
+- The 16 counsellor/Student Voice SQL migrations under `backend/migrations/20261114*.sql` are applied in order by GitHub Actions to a disposable PostgreSQL 17 service. The workflow checks schema/RLS assertions, multi-school behaviour, Student Voice access revocation, dual-role restrictions, and trigger permissions.
 - CI uses a synthetic baseline fixture. It is not a complete clone of hosted Supabase and does not replace authenticated end-to-end tests.
 - The hosted Supabase project was inspected read-only. Its foundational schema is present; counsellor and Student Voice tables have not been deployed.
 - No hosted migration has been applied by this feature branch. Do not run `supabase db push` or manually execute feature migrations against production until the migration ledger, live schema, environment configuration and rollback plan have been reviewed and explicitly approved.
