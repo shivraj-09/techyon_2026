@@ -782,3 +782,59 @@ class CanonicalSchemaSnapshotTests(TestCase):
         self.assertIn("create index if not exists idx_class_teacher_class_school", self.hardening)
         self.assertIn("revoke all privileges on all tables in schema public from anon", self.privileges)
         self.assertIn("grant select, insert, update, delete on all tables in schema public to authenticated", self.privileges)
+
+
+class ReferralListAuthorizationTests(IsolatedAsyncioTestCase):
+    async def test_teacher_referral_list_is_scoped_to_submitter(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        user = {"id": "teacher-user"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [{"school_id": str(school_id), "role": "teacher", "status": "active"}]
+        response = httpx.Response(200, json=[])
+
+        with patch.object(counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)):
+            with patch.object(counsellor, "_request", new=AsyncMock(return_value=response)) as request:
+                result = await counsellor.list_referrals(
+                    school_id=school_id,
+                    referral_status=None,
+                    limit=50,
+                    offset=0,
+                    current_user=user,
+                    credentials=credentials,
+                )
+
+        self.assertEqual(result["referrals"], [])
+        self.assertEqual(request.await_args.kwargs["params"]["submitted_by"], "eq.teacher-user")
+
+    async def test_counsellor_referral_list_remains_school_wide(self):
+        from unittest.mock import AsyncMock, patch
+        import httpx
+        from uuid import UUID
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        user = {"id": "counsellor-user"}
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        memberships = [{"school_id": str(school_id), "role": "counsellor", "status": "active"}]
+        response = httpx.Response(200, json=[])
+
+        with patch.object(counsellor, "fetch_active_memberships", new=AsyncMock(return_value=memberships)):
+            with patch.object(counsellor, "_request", new=AsyncMock(return_value=response)) as request:
+                result = await counsellor.list_referrals(
+                    school_id=school_id,
+                    referral_status=None,
+                    limit=50,
+                    offset=0,
+                    current_user=user,
+                    credentials=credentials,
+                )
+
+        self.assertEqual(result["referrals"], [])
+        self.assertNotIn("submitted_by", request.await_args.kwargs["params"])
