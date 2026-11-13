@@ -106,9 +106,9 @@ export function UserMenu({
               color: "var(--es-text-subtle)",
             }}
           >
-            Layout Role Preview
+            Workspace
           </div>
-          {(["admin", "teacher", "parent"] as UserRole[]).map((r) => {
+          {(["admin", "teacher", "parent", "counsellor"] as UserRole[]).map((r) => {
             const active = r === role;
             return (
               <button
