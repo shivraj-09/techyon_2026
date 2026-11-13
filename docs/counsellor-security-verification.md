@@ -12,7 +12,7 @@ GitHub Actions starts a disposable PostgreSQL 17 service and:
 
 1. Bootstraps Supabase auth scaffolding and a synthetic EduSync baseline.
 2. Applies the recovered baseline snapshots and existing backend migrations.
-3. Applies all 15 `backend/migrations/20261114*.sql` feature migrations in filename order, each in a separate `psql` invocation so the counsellor enum addition is committed before later migrations use it.
+3. Applies all 16 `backend/migrations/20261114*.sql` feature migrations in filename order, each in a separate `psql` invocation so the counsellor enum addition is committed before later migrations use it.
 4. Runs structural/RLS/trigger assertions.
 5. Runs multi-school behavioural tests covering referral access, Student Voice ownership, dual-role exclusion, message/meeting access, identity reveal, and terminal link revocation.
 6. Verifies trigger-only SECURITY DEFINER functions are not directly executable by `anon` or `authenticated`, while the announcement notification trigger still fans out correctly.
@@ -47,7 +47,7 @@ Use separate test users for each role and at least two schools. Set request JWT 
 | Dual-role account | Linked student who is also counsellor | Cannot send as either Student Voice participant role |
 | Meeting request | Student | Can request a meeting only on own open conversation |
 | Meeting request status | Assigned counsellor | pending -> approved/declined; approved -> completed |
-| Identity reveal | Assigned counsellor, approved or completed request | Returns student identity and inserts audit row |
+| Identity reveal | Assigned counsellor, approved or completed request | Returns minimal student name/admission/class details and inserts audit row |
 | Identity reveal | Unassigned counsellor, pending/declined request, other school, or revoked link | Denied; no identity returned |
 | Trigger RPC | anon/authenticated | Cannot directly execute trigger-only SECURITY DEFINER functions |
 | Notification trigger | Authenticated admin creates announcement | Trigger still creates expected recipient notifications |
@@ -71,6 +71,7 @@ Apply the existing baseline first, then the feature migrations in this order:
 13. `202611140013_make_student_voice_revocation_terminal.sql`
 14. `202611140014_keep_student_voice_identity_private_in_rls.sql`
 15. `202611140015_restrict_trigger_function_execution.sql`
+16. `202611140016_return_minimal_identity_after_audited_reveal.sql`
 
 The enum addition in migration 001 must commit before later migrations cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
