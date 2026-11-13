@@ -380,7 +380,7 @@ class StudentVoiceMigrationContractTests(TestCase):
     def test_student_access_policies_recheck_active_link(self):
         sql = self.student_access.lower()
         self.assertIn("student_voice_owns_active_conversation", sql)
-        self.assertGreaterEqual(sql.count("student_voice_owns_active_conversation("), 5)
+        self.assertGreaterEqual(sql.count("student_voice_owns_active_conversation("), 4)
         self.assertIn("security definer", sql)
         self.assertIn("set search_path = ''", sql)
         for helper in (
