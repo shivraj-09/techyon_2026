@@ -89,7 +89,7 @@ The enum addition in migration 001 must commit before migrations that cast/use t
 
 Account-link revocation is terminal: the database permits only active -> revoked, and identity columns cannot be changed. The active account-link row is revalidated by student-facing RLS policies for conversation reads, message reads/writes, and meeting-request reads/creation. Revoking a link therefore suspends access to existing Student Voice content as well as preventing new conversations. Counsellor access remains governed by active school membership and conversation assignment.
 
-Identity reveal is permitted for approved and completed meeting requests, but still requires the same assigned active counsellor, active school membership, and active student link. Every successful reveal is recorded as a separate audit event. Revoking the student link blocks future identity reveals; it cannot reverse information already disclosed.
+Identity reveal is permitted for approved and completed meeting requests, but still requires the same assigned active counsellor, active school membership, and active student link. Every successful reveal is recorded as a separate audit event. Revoking the student link blocks future identity reveals; it cannot reverse information already disclosed. The reveal function takes a shared row lock on the active link while it validates and audits the reveal, serializing disclosure against concurrent link revocation: a completed revocation blocks the reveal, while a reveal already in progress completes before revocation can commit.
 
 ## Known audience limitation
 
