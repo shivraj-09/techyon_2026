@@ -207,3 +207,185 @@ async def review_referral(
     if not rows:
         raise HTTPException(status_code=404, detail="Referral not found")
     return {"success": True, "referral": rows[0]}
+
+
+from app.schemas.counsellor import CaseCreateFromReferral, CaseNoteCreate, CaseStatusUpdate
+
+cases_router = APIRouter(prefix="/schools/{school_id}/counselling/cases", tags=["Counselling Cases"])
+
+
+@cases_router.post("", status_code=status.HTTP_201_CREATED)
+async def create_case_from_referral(
+    school_id: UUID,
+    payload: CaseCreateFromReferral,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Convert an accepted referral assigned to this counsellor into a confidential case."""
+    referral_rows = _rows(await _request(
+        "counsellor_referrals",
+        "GET",
+        credentials,
+        params={
+            "select": "id,school_id,student_id,status,assigned_counsellor_id",
+            "id": f"eq.{payload.referral_id}",
+            "school_id": f"eq.{school_id}",
+            "limit": "1",
+        },
+    ))
+    if not referral_rows:
+        raise HTTPException(status_code=404, detail="Referral not found")
+    referral = referral_rows[0]
+    if referral["status"] != "accepted":
+        raise HTTPException(status_code=409, detail="Only accepted referrals can become counselling cases")
+    if referral.get("assigned_counsellor_id") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Only the assigned counsellor can open this case")
+
+    response = await _request(
+        "counselling_cases",
+        "POST",
+        credentials,
+        params={"select": "id,school_id,student_id,referral_id,assigned_counsellor_id,status,opened_at,closed_at,created_at,updated_at"},
+        payload={
+            "school_id": str(school_id),
+            "student_id": referral["student_id"],
+            "referral_id": str(payload.referral_id),
+            "assigned_counsellor_id": current_user["id"],
+        },
+    )
+    if response.status_code == 409:
+        raise HTTPException(status_code=409, detail="A counselling case already exists for this referral")
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not create counselling case")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Case was created but no record was returned")
+    return {"success": True, "case": rows[0]}
+
+
+@cases_router.get("")
+async def list_counselling_cases(
+    school_id: UUID,
+    case_status: str | None = Query(default=None, alias="status"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Return only cases assigned to the authenticated counsellor (enforced again by RLS)."""
+    if case_status and case_status not in {"open", "in_progress", "closed"}:
+        raise HTTPException(status_code=422, detail="Invalid case status")
+    params = {
+        "select": "id,school_id,student_id,referral_id,assigned_counsellor_id,status,opened_at,closed_at,created_at,updated_at",
+        "school_id": f"eq.{school_id}",
+        "order": "opened_at.desc",
+        "limit": str(limit),
+        "offset": str(offset),
+    }
+    if case_status:
+        params["status"] = f"eq.{case_status}"
+    response = await _request("counselling_cases", "GET", credentials, params=params)
+    return {"success": True, "cases": _rows(response), "limit": limit, "offset": offset}
+
+
+@cases_router.patch("/{case_id}")
+async def update_case_status(
+    school_id: UUID,
+    case_id: UUID,
+    payload: CaseStatusUpdate,
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Counsellors may move their own cases in progress or close them."""
+    existing = _rows(await _request(
+        "counselling_cases",
+        "GET",
+        credentials,
+        params={"select": "id,status", "id": f"eq.{case_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not existing:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if existing[0]["status"] == "closed":
+        raise HTTPException(status_code=409, detail="Closed cases cannot be reopened")
+    response = await _request(
+        "counselling_cases",
+        "PATCH",
+        credentials,
+        params={
+            "select": "id,school_id,student_id,referral_id,assigned_counsellor_id,status,opened_at,closed_at,created_at,updated_at",
+            "id": f"eq.{case_id}",
+            "school_id": f"eq.{school_id}",
+        },
+        payload={"status": payload.status},
+    )
+    if response.status_code not in (200, 204):
+        raise HTTPException(status_code=502, detail="Could not update case")
+    rows = _rows(response, allowed=(200, 204))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return {"success": True, "case": rows[0]}
+
+
+@cases_router.get("/{case_id}/notes")
+async def list_case_notes(
+    school_id: UUID,
+    case_id: UUID,
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Private note bodies are returned only when RLS confirms assigned-counsellor access."""
+    case_rows = _rows(await _request(
+        "counselling_cases",
+        "GET",
+        credentials,
+        params={"select": "id", "id": f"eq.{case_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not case_rows:
+        raise HTTPException(status_code=404, detail="Case not found")
+    response = await _request(
+        "counselling_case_notes",
+        "GET",
+        credentials,
+        params={"select": "id,case_id,author_user_id,note_body,created_at", "case_id": f"eq.{case_id}", "order": "created_at.asc"},
+    )
+    return {"success": True, "notes": _rows(response)}
+
+
+@cases_router.post("/{case_id}/notes", status_code=status.HTTP_201_CREATED)
+async def add_case_note(
+    school_id: UUID,
+    case_id: UUID,
+    payload: CaseNoteCreate,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    """Append a private note; note author is always taken from the verified access token."""
+    case_rows = _rows(await _request(
+        "counselling_cases",
+        "GET",
+        credentials,
+        params={"select": "id,status", "id": f"eq.{case_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not case_rows:
+        raise HTTPException(status_code=404, detail="Case not found")
+    if case_rows[0]["status"] == "closed":
+        raise HTTPException(status_code=409, detail="Cannot add notes to a closed case")
+    response = await _request(
+        "counselling_case_notes",
+        "POST",
+        credentials,
+        params={"select": "id,case_id,author_user_id,note_body,created_at"},
+        payload={
+            "case_id": str(case_id),
+            "author_user_id": current_user["id"],
+            "note_body": payload.note_body,
+        },
+    )
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not save private case note")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=502, detail="Note was saved but no record was returned")
+    return {"success": True, "note": rows[0]}
