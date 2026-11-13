@@ -239,8 +239,7 @@ drop policy if exists student_voice_meetings_counsellor_select on public.student
 create policy student_voice_meetings_counsellor_select on public.student_voice_meeting_requests
 for select to authenticated
 using (
-    status = 'pending'
-    and exists (
+    exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_meeting_requests.school_id
           and m.user_id = (select auth.uid())
@@ -267,7 +266,8 @@ drop policy if exists student_voice_meetings_counsellor_update on public.student
 create policy student_voice_meetings_counsellor_update on public.student_voice_meeting_requests
 for update to authenticated
 using (
-    exists (
+    status = 'pending'
+    and exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_meeting_requests.school_id
           and m.user_id = (select auth.uid())
