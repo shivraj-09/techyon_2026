@@ -37,6 +37,7 @@ type FeeBalance = {
   due_date: string;
   status: string;
 };
+type FeePayment = { id: string; amount: string | number; payment_method: string; reference_number: string | null; status: string; paid_at: string; };
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type AttendanceRecord = {
   id: string;
@@ -89,6 +90,18 @@ export default function DashboardPage() {
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [feeBalances, setFeeBalances] = useState<FeeBalance[]>([]);
+  const [invoiceFormOpen, setInvoiceFormOpen] = useState(false);
+  const [invoiceStudentId, setInvoiceStudentId] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceDescription, setInvoiceDescription] = useState("");
+  const [invoiceAmount, setInvoiceAmount] = useState("");
+  const [invoiceDueDate, setInvoiceDueDate] = useState("");
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [paymentDrafts, setPaymentDrafts] = useState<Record<string, { amount: string; method: "cash" | "upi" | "bank_transfer" | "card" | "other"; reference: string }>>({});
+  const [paymentSavingId, setPaymentSavingId] = useState("");
+  const [expandedPayments, setExpandedPayments] = useState<Record<string, boolean>>({});
+  const [paymentHistory, setPaymentHistory] = useState<Record<string, FeePayment[]>>({});
+  const [paymentHistoryLoading, setPaymentHistoryLoading] = useState<Record<string, boolean>>({});
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [attendanceRoster, setAttendanceRoster] = useState<RosterStudent[]>([]);
   const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
@@ -265,6 +278,89 @@ export default function DashboardPage() {
       setError(err instanceof Error ? err.message : "Could not save attendance.");
     } finally {
       setAttendanceSaving(false);
+    }
+  }
+
+
+  async function createInvoice(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!schoolId || !token || !isAdmin) return;
+    setFeeSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(`/api/v1/schools/${schoolId}/fees/invoices`, token, {
+        method: "POST",
+        body: JSON.stringify({
+          student_id: invoiceStudentId,
+          invoice_number: invoiceNumber.trim(),
+          description: invoiceDescription.trim(),
+          amount_due: invoiceAmount,
+          due_date: invoiceDueDate,
+        }),
+      });
+      setInvoiceStudentId("");
+      setInvoiceNumber("");
+      setInvoiceDescription("");
+      setInvoiceAmount("");
+      setInvoiceDueDate("");
+      setInvoiceFormOpen(false);
+      setNotice("Fee invoice created successfully.");
+      await loadSchoolData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create fee invoice.");
+    } finally {
+      setFeeSaving(false);
+    }
+  }
+
+  async function recordFeePayment(event: FormEvent<HTMLFormElement>, invoiceId: string) {
+    event.preventDefault();
+    if (!schoolId || !token || !isAdmin) return;
+    const draft = paymentDrafts[invoiceId];
+    if (!draft?.amount) return;
+    setPaymentSavingId(invoiceId);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(`/api/v1/schools/${schoolId}/fees/invoices/${invoiceId}/payments`, token, {
+        method: "POST",
+        body: JSON.stringify({
+          amount: draft.amount,
+          payment_method: draft.method,
+          reference_number: draft.reference.trim() || null,
+        }),
+      });
+      setPaymentDrafts((previous) => ({ ...previous, [invoiceId]: { amount: "", method: "upi", reference: "" } }));
+      setNotice("Payment recorded successfully.");
+      const history = await apiRequest<{ payments: FeePayment[] }>(
+        `/api/v1/schools/${schoolId}/fees/invoices/${invoiceId}/payments`, token,
+      );
+      setPaymentHistory((previous) => ({ ...previous, [invoiceId]: history.payments || [] }));
+      setExpandedPayments((previous) => ({ ...previous, [invoiceId]: true }));
+      await loadSchoolData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not record payment.");
+    } finally {
+      setPaymentSavingId("");
+    }
+  }
+
+  async function togglePaymentHistory(invoiceId: string) {
+    const nextOpen = !expandedPayments[invoiceId];
+    setExpandedPayments((previous) => ({ ...previous, [invoiceId]: nextOpen }));
+    if (!nextOpen || paymentHistory[invoiceId]) return;
+    setPaymentHistoryLoading((previous) => ({ ...previous, [invoiceId]: true }));
+    try {
+      const result = await apiRequest<{ payments: FeePayment[] }>(
+        `/api/v1/schools/${schoolId}/fees/invoices/${invoiceId}/payments`, token,
+      );
+      setPaymentHistory((previous) => ({ ...previous, [invoiceId]: result.payments || [] }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load payment history.");
+      setExpandedPayments((previous) => ({ ...previous, [invoiceId]: false }));
+    } finally {
+      setPaymentHistoryLoading((previous) => ({ ...previous, [invoiceId]: false }));
     }
   }
 
@@ -569,8 +665,25 @@ export default function DashboardPage() {
 
                 {activeTab === "fees" && (
                   <section className="card">
-                    <h2>Fee balances</h2>
-                    <p className="muted">Outstanding balances returned by the school's fee API. Payment recording remains an admin-only workflow.</p>
+                    <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <div><h2>Fee management</h2><p className="muted">Create invoices, record collections and review payment history.</p></div>
+                      {isAdmin && <button className="btn" onClick={() => setInvoiceFormOpen((open) => !open)}>{invoiceFormOpen ? "Close" : "＋ Create invoice"}</button>}
+                    </div>
+                    {invoiceFormOpen && isAdmin && (
+                      <form onSubmit={createInvoice} className="field" style={{ margin: "16px 0" }}>
+                        <label>Student
+                          <select required value={invoiceStudentId} onChange={(e) => setInvoiceStudentId(e.target.value)}>
+                            <option value="">Select a student</option>
+                            {students.map((student) => <option key={student.id} value={student.id}>{student.first_name} {student.last_name || ""} · {student.admission_no}</option>)}
+                          </select>
+                        </label>
+                        <label>Invoice number<input required maxLength={50} value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} placeholder="e.g. RHS-2026-002" /></label>
+                        <label>Description<input required maxLength={300} value={invoiceDescription} onChange={(e) => setInvoiceDescription(e.target.value)} placeholder="e.g. Term 2 tuition fee" /></label>
+                        <label>Amount due (₹)<input required type="number" min="0.01" step="0.01" value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} /></label>
+                        <label>Due date<input required type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} /></label>
+                        <button className="btn" disabled={feeSaving || students.length === 0}>{feeSaving ? "Creating…" : "Create invoice"}</button>
+                      </form>
+                    )}
                     <div className="grid">
                       <article className="stat"><span className="muted">Invoices</span><h2>{feeBalances.length}</h2></article>
                       <article className="stat"><span className="muted">Total invoiced</span><h2>₹{feeBalances.reduce((sum, item) => sum + Number(item.amount_due || 0), 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}</h2></article>
@@ -579,15 +692,30 @@ export default function DashboardPage() {
                     {feeBalances.length === 0 ? <p className="muted">No fee balances are available for this account.</p> : (
                       <div style={{ overflowX: "auto" }}>
                         <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                          <thead><tr><th style={{ padding: 10 }}>Invoice</th><th style={{ padding: 10 }}>Due date</th><th style={{ padding: 10 }}>Amount due</th><th style={{ padding: 10 }}>Paid</th><th style={{ padding: 10 }}>Outstanding</th><th style={{ padding: 10 }}>Status</th></tr></thead>
-                          <tbody>{feeBalances.map((item) => (
-                            <tr key={item.invoice_id} style={{ borderTop: "1px solid #e2eaed" }}>
+                          <thead><tr><th style={{ padding: 10 }}>Invoice</th><th style={{ padding: 10 }}>Due date</th><th style={{ padding: 10 }}>Amount due</th><th style={{ padding: 10 }}>Paid</th><th style={{ padding: 10 }}>Outstanding</th><th style={{ padding: 10 }}>Status</th>{isAdmin && <th style={{ padding: 10 }}>Actions</th>}</tr></thead>
+                          <tbody>{feeBalances.map((item) => {
+                            const payable = Number(item.outstanding_amount) > 0 && !["draft", "cancelled"].includes(item.status);
+                            const draft = paymentDrafts[item.invoice_id] || { amount: "", method: "upi" as const, reference: "" };
+                            return <tr key={item.invoice_id} style={{ borderTop: "1px solid #e2eaed" }}>
                               <td style={{ padding: 10 }}>{item.invoice_number}</td><td style={{ padding: 10 }}>{item.due_date}</td><td style={{ padding: 10 }}>₹{Number(item.amount_due).toLocaleString("en-IN")}</td><td style={{ padding: 10 }}>₹{Number(item.amount_paid).toLocaleString("en-IN")}</td><td style={{ padding: 10 }}>₹{Number(item.outstanding_amount).toLocaleString("en-IN")}</td><td style={{ padding: 10, textTransform: "capitalize" }}>{item.status.replaceAll("_", " ")}</td>
-                            </tr>
-                          ))}</tbody>
+                              {isAdmin && <td style={{ padding: 10, minWidth: 260 }}>
+                                {payable ? <form onSubmit={(event) => void recordFeePayment(event, item.invoice_id)} className="field">
+                                  <label>Payment amount (₹)<input required type="number" min="0.01" max={Number(item.outstanding_amount)} step="0.01" value={draft.amount} onChange={(e) => setPaymentDrafts((previous) => ({ ...previous, [item.invoice_id]: { ...draft, amount: e.target.value } }))} /></label>
+                                  <label>Method<select value={draft.method} onChange={(e) => setPaymentDrafts((previous) => ({ ...previous, [item.invoice_id]: { ...draft, method: e.target.value as typeof draft.method } }))}><option value="upi">UPI</option><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="card">Card</option><option value="other">Other</option></select></label>
+                                  <label>Reference (optional)<input maxLength={100} value={draft.reference} onChange={(e) => setPaymentDrafts((previous) => ({ ...previous, [item.invoice_id]: { ...draft, reference: e.target.value } }))} /></label>
+                                  <button className="btn secondary" disabled={paymentSavingId === item.invoice_id}>{paymentSavingId === item.invoice_id ? "Recording…" : "Record payment"}</button>
+                                </form> : <span className="muted">No payment due</span>}
+                                <button type="button" className="btn secondary" style={{ marginTop: 8 }} onClick={() => void togglePaymentHistory(item.invoice_id)}>{expandedPayments[item.invoice_id] ? "Hide history" : "Payment history"}</button>
+                                {expandedPayments[item.invoice_id] && <div style={{ marginTop: 8 }}>
+                                  {paymentHistoryLoading[item.invoice_id] ? <span className="muted">Loading history…</span> : (paymentHistory[item.invoice_id] || []).length === 0 ? <span className="muted">No payments recorded.</span> : (paymentHistory[item.invoice_id] || []).map((payment) => <p key={payment.id} className="muted" style={{ margin: "6px 0" }}>₹{Number(payment.amount).toLocaleString("en-IN")} · {payment.payment_method.replaceAll("_", " ")} · {new Date(payment.paid_at).toLocaleDateString("en-IN")}{payment.reference_number ? ` · ${payment.reference_number}` : ""}</p>)}
+                                </div>}
+                              </td>}
+                            </tr>;
+                          })}</tbody>
                         </table>
                       </div>
                     )}
+                    {!isAdmin && <p className="muted">You can view fee balances and payment records. Invoice creation and payment recording are restricted to school administrators.</p>}
                   </section>
                 )}
 
