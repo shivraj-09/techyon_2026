@@ -13,7 +13,9 @@ from app.schemas.counsellor import (
     CaseNoteCreate,
     CaseStatusUpdate,
     CounsellingNoticeCreate,
+    CounsellingNoticeStatusUpdate,
     CounsellingSessionCreate,
+    CounsellingSessionStatusUpdate,
     ReferralCreate,
     ReferralReviewUpdate,
     StudentVoiceLinkCreate,
@@ -464,6 +466,43 @@ async def list_counselling_sessions(
     return {"success": True, "sessions": _rows(response), "limit": limit, "offset": offset}
 
 
+@sessions_router.patch("/sessions/{session_id}")
+async def update_counselling_session_status(
+    school_id: UUID,
+    session_id: UUID,
+    payload: CounsellingSessionStatusUpdate,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    existing = _rows(await _request(
+        "counselling_sessions", "GET", credentials,
+        params={"select": "id,status,created_by", "id": f"eq.{session_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not existing:
+        raise HTTPException(status_code=404, detail="Counselling session not found")
+    record = existing[0]
+    if record.get("created_by") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Only the session creator may change its status")
+    allowed = {"draft": {"published", "cancelled"}, "published": {"cancelled", "completed"}}
+    if payload.status not in allowed.get(record["status"], set()):
+        raise HTTPException(status_code=409, detail="Invalid counselling session status transition")
+    response = await _request(
+        "counselling_sessions", "PATCH", credentials,
+        params={
+            "select": "id,school_id,created_by,title,description,audience,class_id,starts_at,ends_at,capacity,location,meeting_mode,status,published_at,created_at,updated_at",
+            "id": f"eq.{session_id}", "school_id": f"eq.{school_id}", "status": f"eq.{record['status']}",
+        },
+        payload={"status": payload.status},
+    )
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not update counselling session")
+    rows = _rows(response)
+    if not rows:
+        raise HTTPException(status_code=409, detail="Session changed concurrently; refresh and try again")
+    return {"success": True, "session": rows[0]}
+
+
 @sessions_router.post("/notices", status_code=status.HTTP_201_CREATED)
 async def create_counselling_notice(
     school_id: UUID,
@@ -512,6 +551,45 @@ async def list_counselling_notices(
         params["status"] = "eq.published"
     response = await _request("counselling_notices", "GET", credentials, params=params)
     return {"success": True, "notices": _rows(response), "limit": limit, "offset": offset}
+
+
+
+
+@sessions_router.patch("/notices/{notice_id}")
+async def update_counselling_notice_status(
+    school_id: UUID,
+    notice_id: UUID,
+    payload: CounsellingNoticeStatusUpdate,
+    current_user: dict = Depends(get_current_user),
+    _counsellor: dict = Depends(require_school_roles("counsellor")),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    existing = _rows(await _request(
+        "counselling_notices", "GET", credentials,
+        params={"select": "id,status,created_by", "id": f"eq.{notice_id}", "school_id": f"eq.{school_id}", "limit": "1"},
+    ))
+    if not existing:
+        raise HTTPException(status_code=404, detail="Counselling notice not found")
+    record = existing[0]
+    if record.get("created_by") != current_user["id"]:
+        raise HTTPException(status_code=403, detail="Only the notice creator may change its status")
+    allowed = {"draft": {"published", "cancelled"}, "published": {"cancelled"}}
+    if payload.status not in allowed.get(record["status"], set()):
+        raise HTTPException(status_code=409, detail="Invalid counselling notice status transition")
+    response = await _request(
+        "counselling_notices", "PATCH", credentials,
+        params={
+            "select": "id,school_id,created_by,title,body,audience,class_id,publish_at,expires_at,status,created_at,updated_at",
+            "id": f"eq.{notice_id}", "school_id": f"eq.{school_id}", "status": f"eq.{record['status']}",
+        },
+        payload={"status": payload.status},
+    )
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail="Could not update counselling notice")
+    rows = _rows(response)
+    if not rows:
+        raise HTTPException(status_code=409, detail="Notice changed concurrently; refresh and try again")
+    return {"success": True, "notice": rows[0]}
 
 
 student_voice_router = APIRouter(prefix="/schools/{school_id}/student-voice", tags=["Student Voice"])
