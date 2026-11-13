@@ -91,10 +91,39 @@ grant select (id, school_id, conversation_id, preferred_times, student_message, 
       insert (school_id, conversation_id, requested_by, preferred_times, student_message),
       update (status, handled_by, handled_at) on public.student_voice_meeting_requests to authenticated;
 
--- A school admin may create/revoke account links; the linked student account can read its own link.
+-- A school admin may manage account links; the linked student can read only an active own link.
 drop policy if exists student_voice_links_admin_manage on public.student_voice_student_links;
-create policy student_voice_links_admin_manage on public.student_voice_student_links
-for all to authenticated
+drop policy if exists student_voice_links_admin_select on public.student_voice_student_links;
+drop policy if exists student_voice_links_admin_insert on public.student_voice_student_links;
+drop policy if exists student_voice_links_admin_update on public.student_voice_student_links;
+
+create policy student_voice_links_admin_select on public.student_voice_student_links
+for select to authenticated
+using (
+    exists (
+        select 1 from public.school_memberships m
+        where m.school_id = student_voice_student_links.school_id
+          and m.user_id = (select auth.uid())
+          and m.role = 'admin'::public.membership_role
+          and m.status = 'active'::public.membership_status
+    )
+);
+
+create policy student_voice_links_admin_insert on public.student_voice_student_links
+for insert to authenticated
+with check (
+    linked_by = (select auth.uid())
+    and exists (
+        select 1 from public.school_memberships m
+        where m.school_id = student_voice_student_links.school_id
+          and m.user_id = (select auth.uid())
+          and m.role = 'admin'::public.membership_role
+          and m.status = 'active'::public.membership_status
+    )
+);
+
+create policy student_voice_links_admin_update on public.student_voice_student_links
+for update to authenticated
 using (
     exists (
         select 1 from public.school_memberships m
@@ -105,8 +134,7 @@ using (
     )
 )
 with check (
-    linked_by = (select auth.uid())
-    and exists (
+    exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_student_links.school_id
           and m.user_id = (select auth.uid())
