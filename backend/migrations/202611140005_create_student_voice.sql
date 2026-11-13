@@ -338,12 +338,12 @@ create table if not exists public.student_voice_identity_reveal_audit (
     student_id uuid not null,
     revealed_at timestamptz not null default now(),
     constraint student_voice_identity_audit_student_fk
-        foreign key (school_id, student_id) references public.students(school_id, id)
+        foreign key (student_id, school_id) references public.students(id, school_id)
 );
 create index if not exists student_voice_identity_audit_school_time_idx
     on public.student_voice_identity_reveal_audit (school_id, revealed_at desc);
 alter table public.student_voice_identity_reveal_audit enable row level security;
-revoke all on public.student_voice_identity_reveal_audit from anon;
+revoke all on public.student_voice_identity_reveal_audit from public, anon, authenticated;
 
 
 -- Atomic, audited identity reveal. No counsellor receives direct SELECT access to the identity map.
