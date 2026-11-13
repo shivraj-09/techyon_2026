@@ -432,6 +432,36 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("c.status = 'open'", insert_policy)
         self.assertIn("l.status = 'active'", insert_policy)
 
+    def test_referral_trigger_restricts_status_transitions_and_assignment(self):
+        sql = self.workflow_transitions.lower()
+        start = sql.index("create or replace function public.enforce_counsellor_referral_transition")
+        end = sql.index("drop trigger if exists counsellor_referral_transition_guard", start)
+        function = sql[start:end]
+        expected_transitions = (
+            "when 'submitted' then new.status in ('under_review', 'clarification_requested', 'accepted', 'declined', 'closed')",
+            "when 'under_review' then new.status in ('clarification_requested', 'accepted', 'declined', 'closed')",
+            "when 'clarification_requested' then new.status in ('under_review', 'accepted', 'declined', 'closed')",
+            "when 'accepted' then new.status = 'closed'",
+            "when 'declined' then new.status = 'closed'",
+            "when 'closed' then false",
+        )
+        for transition in expected_transitions:
+            self.assertIn(transition, function)
+        self.assertIn("new.assigned_counsellor_id is distinct from (select auth.uid())", function)
+        self.assertIn("old.assigned_counsellor_id is not null", function)
+        self.assertIn("cannot be reassigned", function)
+
+    def test_meeting_trigger_allows_only_pending_review_and_approved_completion(self):
+        sql = self.workflow_transitions.lower()
+        start = sql.index("create or replace function public.enforce_student_voice_meeting_transition")
+        end = sql.index("drop trigger if exists student_voice_meeting_transition_guard", start)
+        function = sql[start:end]
+        self.assertIn("when 'pending' then new.status in ('approved', 'declined')", function)
+        self.assertIn("when 'approved' then new.status = 'completed'", function)
+        self.assertIn("else false", function)
+        self.assertIn("new.handled_by is distinct from (select auth.uid())", function)
+        self.assertIn("new.handled_at is null", function)
+
     def test_meeting_request_trigger_freezes_request_content(self):
         sql = self.workflow_transitions.lower()
         start = sql.index("create or replace function public.enforce_student_voice_meeting_transition")
