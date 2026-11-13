@@ -3,11 +3,10 @@
 import { FormEvent, MouseEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-// [DISCONNECTED ENDPOINT CLIENT] Supabase browser client (used for POST /auth/v1/token & POST /auth/v1/recover)
-// import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import "./login.css";
 
-type RoleId = "student" | "parent" | "teacher" | "admin";
+type RoleId = "student" | "parent" | "teacher" | "admin" | "counsellor";
 
 interface RoleOption {
   id: RoleId;
@@ -29,6 +28,12 @@ const ROLES: RoleOption[] = [
     title: "Teacher",
     subtitle: "Faculty",
     sampleEmail: "teacher@institution.in",
+  },
+  {
+    id: "counsellor",
+    title: "Counsellor",
+    subtitle: "Student Support",
+    sampleEmail: "counsellor@institution.in",
   },
   {
     id: "admin",
@@ -65,58 +70,56 @@ export default function LoginPage() {
     setError("");
     setSuccess("");
     setBusy(true);
-
     try {
-      /*
+      if (!selectedRole || selectedRole === "student") {
+        throw new Error("Choose a supported school role to continue.");
+      }
       const supabase = createClient();
       const cleanInput = email.trim();
       const credentials = cleanInput.includes("@")
         ? { email: cleanInput, password }
         : { phone: cleanInput, password };
-
-      // ENDPOINT 1: Supabase Auth Sign In (POST /auth/v1/token?grant_type=password)
       const { data: authData, error: signInError } =
-        await supabase.auth.signInWithPassword(credentials as any);
-
+        await supabase.auth.signInWithPassword(credentials);
       if (signInError) throw signInError;
+      const accessToken = authData.session?.access_token;
+      if (!accessToken) throw new Error("Sign-in did not return an access token.");
 
-      // ENDPOINT 2 & 3: FastAPI Backend Verification (/api/v1/auth/me & /api/v1/auth/memberships)
-      if (authData?.session?.access_token) {
-        const api =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
-        try {
-          // ENDPOINT 2: GET /api/v1/auth/me
-          await fetch(`${api}/api/v1/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          // ENDPOINT 3: GET /api/v1/auth/memberships
-          const membershipRes = await fetch(`${api}/api/v1/auth/memberships`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          if (membershipRes.ok) {
-            const membershipData = await membershipRes.json();
-            console.log("Verified memberships:", membershipData.memberships);
-          }
-        } catch (backendError) {
-          console.warn("Backend auth verification warning:", backendError);
-        }
+      const api = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000").replace(/\\/$/, "");
+      const membershipResponse = await fetch(`${api}/api/v1/auth/memberships`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      if (!membershipResponse.ok) {
+        throw new Error(membershipResponse.status === 401
+          ? "Your session could not be verified. Please sign in again."
+          : "Could not verify your school access. Please try again.");
       }
-      */
-
-      // Offline/Preview mode: store selected email & role locally and go straight to /dashboard
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("edusync_demo_email", email.trim());
-        sessionStorage.setItem("edusync_demo_role", selectedRole || "parent");
+      const membershipData = await membershipResponse.json();
+      if (membershipData?.success !== true || !Array.isArray(membershipData.memberships)) {
+        throw new Error("The school access service returned an invalid response.");
+      }
+      const membership = membershipData.memberships.find(
+        (item: { role: string; status: string; school_id: string }) =>
+          item.role === selectedRole && item.status === "active" && item.school_id,
+      );
+      if (!membership) {
+        await supabase.auth.signOut();
+        throw new Error(`This account does not have an active ${selectedRole} membership. Select the role assigned by your school.`);
       }
 
-      router.replace("/dashboard");
+      const userEmail = authData.user.email || cleanInput;
+      sessionStorage.setItem("edusync_demo_email", userEmail);
+      sessionStorage.setItem("edusync_demo_role", selectedRole);
+      sessionStorage.setItem("edusync_active_school_id", membership.school_id);
+      const destination = selectedRole === "counsellor"
+        ? "/counsellor/dashboard"
+        : selectedRole === "teacher"
+          ? "/teacher/dashboard"
+          : selectedRole === "parent"
+            ? "/parent/dashboard"
+            : "/dashboard";
+      router.replace(destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");
@@ -125,45 +128,26 @@ export default function LoginPage() {
     }
   }
 
-  // [DISCONNECTED ENDPOINT] Previously connected to:
-  // Supabase Password Reset: POST /auth/v1/recover (via supabase.auth.resetPasswordForEmail)
   async function handleForgotPassword(e: MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     const cleanEmail = email.trim();
-
     if (!cleanEmail || !cleanEmail.includes("@")) {
-      setError(
-        "Please enter your registered email address in the field above to reset your password.",
-      );
+      setError("Enter your registered email address to reset your password.");
       setSuccess("");
       return;
     }
-
     setError("");
     setSuccess("");
     setBusy(true);
-
     try {
-      /*
       const supabase = createClient();
-      // ENDPOINT: Supabase Password Reset (POST /auth/v1/recover)
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        cleanEmail,
-        {
-          redirectTo: `${window.location.origin}/login`,
-        },
-      );
-
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
       if (resetError) throw resetError;
-      */
-
-      setSuccess(
-        `[Preview Mode] Password reset instructions would be sent to ${cleanEmail}.`,
-      );
+      setSuccess("Password reset instructions have been sent if the account exists.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to request password reset.",
-      );
+      setError(err instanceof Error ? err.message : "Unable to request password reset.");
     } finally {
       setBusy(false);
     }
