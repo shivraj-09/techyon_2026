@@ -37,9 +37,13 @@ Use separate test users for each role and at least two schools. Set the request 
 | Referral assignment | Second counsellor | Cannot take over an already assigned referral |
 | Case creation | Assigned counsellor, accepted referral | Can create one case |
 | Case creation | Unassigned counsellor / unaccepted referral | Denied |
-| Case and notes | Assigned counsellor | Can read and append notes while case is open |\n| Case status | Assigned counsellor | open -> in_progress/closed; in_progress -> closed |\n| Case status | Any actor | Cannot reopen a closed case or change status for another counsellor's case |
+| Case and notes | Assigned counsellor | Can read and append notes while case is open |
+| Case status | Assigned counsellor | open -> in_progress/closed; in_progress -> closed |
+| Case status | Any actor | Cannot reopen a closed case or change status for another counsellor's case |
 | Case and notes | Teacher, admin, other counsellor | Cannot read confidential notes |
-| Session/notice | Creating counsellor | Can manage own school content |\n| Session lifecycle | Creator | draft -> published/cancelled; published -> cancelled/completed; terminal states cannot be republished |\n| Notice lifecycle | Creator | draft -> published/cancelled; published -> cancelled; cancelled is terminal |
+| Session/notice | Creating counsellor | Can manage own school content |
+| Session lifecycle | Creator | draft -> published/cancelled; published -> cancelled/completed; terminal states cannot be republished |
+| Notice lifecycle | Creator | draft -> published/cancelled; published -> cancelled; cancelled is terminal |
 | Session/notice | Parent/teacher | Can read only published content addressed to their role |
 | Student Voice link | School admin | Can create and revoke links in own school |
 | Student Voice conversation | Linked student | Can create and read own pseudonymous conversation |
@@ -48,8 +52,8 @@ Use separate test users for each role and at least two schools. Set the request 
 | Student Voice messages | Student/counsellor | Can read/send only as a participant under the conversation rules |
 | Meeting request | Student | Can request a meeting only on own open conversation |
 | Meeting request status | Assigned counsellor | pending -> approved/declined; approved -> completed |
-| Identity reveal | Assigned counsellor, approved request | Returns student identity and inserts audit row |
-| Identity reveal | Unassigned counsellor, pending/declined request, other school | Denied; no identity returned |
+| Identity reveal | Assigned counsellor, approved or completed request | Returns student identity and inserts audit row |
+| Identity reveal | Unassigned counsellor, pending/declined request, other school, or revoked link | Denied; no identity returned |
 
 ## Migration order
 
@@ -61,7 +65,13 @@ Apply the existing base migrations first, then the counsellor migrations in file
 4. `202611140004_create_counselling_sessions_notices.sql`
 5. `202611140005_create_student_voice.sql`
 6. `202611140006_enforce_counsellor_workflow_transitions.sql`
-7. `202611140007_guard_student_voice_conversation_assignment.sql`\n8. `202611140008_enforce_counselling_case_status_transitions.sql`\n9. `202611140009_enforce_counselling_publication_lifecycle.sql`\n10. `202611140010_set_session_publication_timestamp.sql`\n11. `202611140011_revoke_student_voice_access_with_link.sql`\n12. `202611140012_preserve_identity_reveal_after_completion.sql`\n13. `202611140013_make_student_voice_revocation_terminal.sql`
+7. `202611140007_guard_student_voice_conversation_assignment.sql`
+8. `202611140008_enforce_counselling_case_status_transitions.sql`
+9. `202611140009_enforce_counselling_publication_lifecycle.sql`
+10. `202611140010_set_session_publication_timestamp.sql`
+11. `202611140011_revoke_student_voice_access_with_link.sql`
+12. `202611140012_preserve_identity_reveal_after_completion.sql`
+13. `202611140013_make_student_voice_revocation_terminal.sql`
 
 The enum addition in migration 001 must commit before migrations that cast/use the new enum value. Apply migrations in separate transactions in the order shown.
 
@@ -69,11 +79,22 @@ The enum addition in migration 001 must commit before migrations that cast/use t
 
 - Every negative test is denied by the database, not merely by a FastAPI route.
 - Cross-school access returns no rows and rejects writes.
-- Identity reveal is denied unless the meeting request is approved and the conversation is assigned to the caller.
+- Identity reveal is denied unless the meeting request is approved or completed, the conversation is assigned to the caller, the caller has active counsellor membership, and the student account link is active.
 - The identity reveal audit row is written in the same transaction as the reveal.
+- Revoking a student link suspends student-facing access to existing conversations, messages, and meeting requests; the link cannot be reactivated or repointed to another identity.
 - The local database is reset and the full migration sequence reapplied cleanly.
 - Record the exact commit SHA and test output before calling the module database-verified.
 
-## Student Voice link revocation\n\nAccount-link revocation is terminal: the database permits only active -> revoked, and identity columns cannot be changed. The active account-link row is revalidated by student-facing RLS policies for conversation reads, message reads/writes, and meeting-request reads/creation. Revoking a link therefore suspends access to existing Student Voice content as well as preventing new conversations. Counsellor access remains governed by active school membership and conversation assignment. Verify this with DB-backed tests for an active student, then revoke the link and assert that all student-facing reads/writes are denied while the assigned counsellor retains access.\n\nIdentity reveal is permitted for approved and completed meeting requests, but still requires the same assigned active counsellor, active school membership, and active student link. Every successful reveal is recorded as a separate audit event. Revoking the student link blocks future identity reveals; it cannot reverse information already disclosed.\n\n## Known audience limitation\n\nThe schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.\n\n## Current status
+## Student Voice link revocation
+
+Account-link revocation is terminal: the database permits only active -> revoked, and identity columns cannot be changed. The active account-link row is revalidated by student-facing RLS policies for conversation reads, message reads/writes, and meeting-request reads/creation. Revoking a link therefore suspends access to existing Student Voice content as well as preventing new conversations. Counsellor access remains governed by active school membership and conversation assignment.
+
+Identity reveal is permitted for approved and completed meeting requests, but still requires the same assigned active counsellor, active school membership, and active student link. Every successful reveal is recorded as a separate audit event. Revoking the student link blocks future identity reveals; it cannot reverse information already disclosed.
+
+## Known audience limitation
+
+The schema accepts `students` as a session/notice audience, but the current API membership model and RLS policies do not provide student-facing read access. Student-targeted sessions and notices must not be treated as delivered to students until a verified student identity/membership path and class-scoped audience policies are implemented and tested. Parent and teacher reads are role-scoped; class-specific content is currently only valid for the `students` audience.
+
+## Current status
 
 Static review and API schema/authorization unit tests exist. Database-backed RLS and trigger tests have **not** yet been run. No hosted production migrations have been applied.
