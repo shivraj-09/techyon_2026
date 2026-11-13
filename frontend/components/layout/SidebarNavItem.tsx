@@ -23,6 +23,7 @@ export function SidebarNavItem({
       href={item.href}
       onClick={onClick}
       className={`es-nav-item ${isActive ? "active" : ""}`.trim()}
+      data-tooltip={collapsed ? item.label : undefined}
       title={collapsed ? item.label : undefined}
       aria-current={isActive ? "page" : undefined}
     >

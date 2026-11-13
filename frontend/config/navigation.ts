@@ -1,6 +1,11 @@
 import type { IconName } from "@/components/ui/Icon";
 
-export type UserRole = "admin" | "teacher" | "parent" | "counsellor";
+export type UserRole =
+  | "admin"
+  | "teacher"
+  | "parent"
+  | "counsellor"
+  | "student";
 
 export interface NavItemConfig {
   id: string;
@@ -69,16 +74,16 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         badge: "3",
       },
       {
-        id: "student-voice-links",
-        label: "Student Voice Access",
-        href: "/dashboard/student-voice-links",
-        icon: "users",
-      },
-      {
         id: "ai-insights",
         label: "AI Insights",
         href: "/admin/ai-insights",
         icon: "sparkles",
+      },
+      {
+        id: "student-voice-linking",
+        label: "Student Voice Linking",
+        href: "/admin/student-voice-linking",
+        icon: "link",
       },
       {
         id: "settings",
@@ -131,19 +136,18 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         icon: "bell",
         badge: "2",
       },
-    ],
-  },
-  counsellor: {
-    role: "counsellor",
-    roleLabel: "School Counsellor",
-    defaultUserName: "Counsellor",
-    defaultUserEmail: "counsellor@institution.in",
-    navItems: [
-      { id: "dashboard", label: "Counsellor Dashboard", href: "/counsellor/dashboard", icon: "layout-dashboard" },
-      { id: "referrals", label: "Referrals", href: "/counsellor/dashboard#referrals", icon: "inbox" },
-      { id: "cases", label: "Confidential Cases", href: "/counsellor/dashboard#cases", icon: "file-text" },
-      { id: "sessions", label: "Sessions & Notices", href: "/counsellor/dashboard#sessions", icon: "calendar-check" },
-      { id: "student-voice", label: "Student Voice", href: "/counsellor/dashboard#student-voice", icon: "users" },
+      {
+        id: "refer-student",
+        label: "Refer a Student",
+        href: "/teacher/referrals/new",
+        icon: "file-plus",
+      },
+      {
+        id: "my-referrals",
+        label: "My Referrals",
+        href: "/teacher/referrals",
+        icon: "clipboard-check",
+      },
     ],
   },
   parent: {
@@ -188,6 +192,88 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         href: "/parent/notifications",
         icon: "bell",
         badge: "3",
+      },
+    ],
+  },
+  counsellor: {
+    role: "counsellor",
+    roleLabel: "Counsellor",
+    defaultUserName: "Dr. Meenakshi Kulkarni",
+    defaultUserEmail: "counsellor@institution.in",
+    navItems: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        href: "/counsellor/dashboard",
+        icon: "layout-dashboard",
+      },
+      {
+        id: "referral-inbox",
+        label: "Referral Inbox",
+        href: "/counsellor/referrals",
+        icon: "inbox",
+      },
+      {
+        id: "counselling-cases",
+        label: "Counselling Cases",
+        href: "/counsellor/cases",
+        icon: "shield",
+      },
+      {
+        id: "sessions",
+        label: "Sessions",
+        href: "/counsellor/sessions",
+        icon: "calendar",
+      },
+      {
+        id: "notices",
+        label: "Notices",
+        href: "/counsellor/notices",
+        icon: "megaphone",
+      },
+      {
+        id: "student-voice",
+        label: "Student Voice",
+        href: "/counsellor/student-voice",
+        icon: "message-square",
+      },
+      {
+        id: "meeting-requests",
+        label: "Meeting Requests",
+        href: "/counsellor/meeting-requests",
+        icon: "user-check",
+      },
+    ],
+  },
+  student: {
+    role: "student",
+    roleLabel: "Student Voice",
+    defaultUserName: "Student · SV-2041",
+    defaultUserEmail: "student.voice@institution.in",
+    navItems: [
+      {
+        id: "student-voice",
+        label: "Student Voice",
+        href: "/student/voice",
+        icon: "heart",
+      },
+      {
+        id: "my-conversations",
+        label: "My Conversations",
+        href: "/student/voice/conversations",
+        icon: "message-square",
+      },
+      {
+        id: "meeting-requests",
+        label: "Meeting Requests",
+        href: "/student/voice/meeting-requests",
+        icon: "calendar-check",
+      },
+      {
+        id: "notices",
+        label: "Notices",
+        href: "/student/voice/notices",
+        icon: "megaphone",
       },
     ],
   },
