@@ -1,108 +1,396 @@
 "use client";
-import { useEffect, useState } from "react";
+
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+type Role = "admin" | "teacher" | "parent";
 type Membership = {
   id: string;
   school_id: string;
-  role: string;
+  role: Role;
   status: string;
 };
+type SchoolClass = {
+  id: string;
+  school_id: string;
+  name: string;
+  grade_level: string | null;
+  section: string | null;
+  academic_year: string;
+};
+type Student = {
+  id: string;
+  admission_no: string;
+  first_name: string;
+  last_name: string | null;
+  date_of_birth: string | null;
+  status: string;
+};
+
+const apiBase = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/$/, "");
+
+async function apiRequest<T>(
+  path: string,
+  token: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const response = await fetch(`${apiBase}${path}`, {
+    ...init,
+    cache: "no-store",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...init.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail =
+      typeof body.detail === "string" ? body.detail : "The request could not be completed.";
+    throw new Error(detail);
+  }
+  return response.json() as Promise<T>;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [token, setToken] = useState("");
   const [memberships, setMemberships] = useState<Membership[]>([]);
-  const [error, setError] = useState("");
+  const [schoolId, setSchoolId] = useState("");
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [activeTab, setActiveTab] = useState<"overview" | "classes" | "students">("overview");
+  const [classFormOpen, setClassFormOpen] = useState(false);
+  const [studentFormOpen, setStudentFormOpen] = useState(false);
+  const [className, setClassName] = useState("");
+  const [gradeLevel, setGradeLevel] = useState("");
+  const [section, setSection] = useState("");
+  const [academicYear, setAcademicYear] = useState("2026-2027");
+  const [admissionNo, setAdmissionNo] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const activeMembership = useMemo(
+    () => memberships.find((membership) => membership.school_id === schoolId),
+    [memberships, schoolId],
+  );
+  const isAdmin = activeMembership?.role === "admin";
+
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function loadAccount() {
       try {
         const supabase = createClient();
-        const {
-          data: { session },
-          error,
-        } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (!session) {
+        const { data, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!data.session) {
           router.replace("/login");
           return;
         }
-        setEmail(session.user.email || "");
-        const api =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-        const res = await fetch(api + "/api/v1/auth/memberships", {
-          headers: { Authorization: "Bearer " + session.access_token },
-        });
-        if (!res.ok) throw new Error("Could not load school memberships.");
-        const data = await res.json();
-        if (!cancelled) setMemberships(data.memberships || []);
-      } catch (e) {
-        if (!cancelled)
-          setError(e instanceof Error ? e.message : "Something went wrong.");
+        setEmail(data.session.user.email || "");
+        setToken(data.session.access_token);
+        const result = await apiRequest<{ success: boolean; memberships: Membership[] }>(
+          "/api/v1/auth/memberships",
+          data.session.access_token,
+        );
+        if (!result.success || !Array.isArray(result.memberships)) {
+          throw new Error("The school membership service returned an invalid response.");
+        }
+        if (!cancelled) {
+          setMemberships(result.memberships);
+          setSchoolId(result.memberships[0]?.school_id || "");
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Unable to load your account.");
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
-    void load();
-    return () => {
-      cancelled = true;
-    };
+    void loadAccount();
+    return () => { cancelled = true; };
   }, [router]);
+
+  const loadSchoolData = useCallback(async () => {
+    if (!token || !schoolId) {
+      setClasses([]);
+      setStudents([]);
+      return;
+    }
+    setDataLoading(true);
+    setError("");
+    try {
+      const [classResult, studentResult] = await Promise.all([
+        apiRequest<{ classes: SchoolClass[] }>(
+          `/api/v1/schools/${schoolId}/classes`,
+          token,
+        ),
+        apiRequest<{ students: Student[] }>(
+          `/api/v1/schools/${schoolId}/students?limit=100`,
+          token,
+        ),
+      ]);
+      setClasses(classResult.classes || []);
+      setStudents(studentResult.students || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to load school data.");
+    } finally {
+      setDataLoading(false);
+    }
+  }, [schoolId, token]);
+
+  useEffect(() => {
+    void loadSchoolData();
+  }, [loadSchoolData]);
+
   async function signOut() {
     await createClient().auth.signOut();
     router.replace("/login");
     router.refresh();
   }
+
+  async function createClass(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!schoolId || !token) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(
+        `/api/v1/schools/${schoolId}/classes`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            name: className.trim(),
+            grade_level: gradeLevel.trim() || null,
+            section: section.trim() || null,
+            academic_year: academicYear.trim(),
+          }),
+        },
+      );
+      setClassName("");
+      setGradeLevel("");
+      setSection("");
+      setClassFormOpen(false);
+      setNotice("Class created successfully.");
+      await loadSchoolData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create class.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function registerStudent(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!schoolId || !token) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(
+        `/api/v1/schools/${schoolId}/students`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            admission_no: admissionNo.trim(),
+            first_name: firstName.trim(),
+            last_name: lastName.trim() || null,
+            date_of_birth: dateOfBirth || null,
+          }),
+        },
+      );
+      setAdmissionNo("");
+      setFirstName("");
+      setLastName("");
+      setDateOfBirth("");
+      setStudentFormOpen(false);
+      setNotice("Student registered successfully.");
+      await loadSchoolData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not register student.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) {
+    return <main className="shell"><p>Loading your EduSync workspace…</p></main>;
+  }
+
   return (
     <main>
       <header className="topbar">
-        <div className="brand">
-          <span className="mark">E</span>EduSync
-        </div>
+        <div className="brand"><span className="mark">E</span>EduSync</div>
         <div className="row">
           <span className="muted">{email}</span>
-          <button className="btn secondary" onClick={signOut}>
-            Sign out
-          </button>
+          <button className="btn secondary" onClick={signOut}>Sign out</button>
         </div>
       </header>
+
       <div className="shell">
-        <span className="pill">YOUR WORKSPACE</span>
-        <h1>School overview</h1>
-        <p className="muted">
-          Your connected school access and account status.
-        </p>
-        {loading ? (
-          <p>Loading…</p>
-        ) : error ? (
-          <p className="error">{error}</p>
-        ) : memberships.length === 0 ? (
-          <div className="card">
+        <section className="hero">
+          <span className="pill">SCHOOL OPERATING SYSTEM</span>
+          <h1>Your school, connected.</h1>
+          <p>Manage classes and student records from one workspace. Your access is determined by your verified school membership.</p>
+        </section>
+
+        {error && <p className="error" role="alert">{error}</p>}
+        {notice && <p className="success" role="status">{notice}</p>}
+
+        {memberships.length === 0 ? (
+          <section className="card" style={{ marginTop: 20 }}>
             <h2>No active school access yet</h2>
-            <p className="muted">
-              You are signed in, but have no active school membership. Contact
-              your administrator if you were invited.
-            </p>
-          </div>
+            <p className="muted">You are signed in, but no active school membership is linked to this account. If you were invited, open the invitation link again or contact your school administrator.</p>
+          </section>
         ) : (
-          <div className="grid">
-            {memberships.map((m) => (
-              <article className="card" key={m.id}>
-                <span className="pill">{m.role.toUpperCase()}</span>
-                <h2>School workspace</h2>
-                <p className="muted">School ID</p>
-                <p style={{ overflowWrap: "anywhere" }}>{m.school_id}</p>
-                <p className="muted">
-                  Membership: <strong>{m.status}</strong>
-                </p>
-              </article>
-            ))}
-          </div>
+          <>
+            <section className="row" style={{ justifyContent: "space-between", marginTop: 28, flexWrap: "wrap" }}>
+              <div>
+                <span className="pill">YOUR WORKSPACE</span>
+                <h2 style={{ marginBottom: 4 }}>School overview</h2>
+                <p className="muted">Select a school workspace to view its records.</p>
+              </div>
+              {memberships.length > 1 && (
+                <select
+                  aria-label="Select school"
+                  value={schoolId}
+                  onChange={(event) => setSchoolId(event.target.value)}
+                  style={{ padding: 12, borderRadius: 9, border: "1px solid #d5e0e4", minWidth: 240 }}
+                >
+                  {memberships.map((membership) => (
+                    <option key={membership.id} value={membership.school_id}>
+                      {membership.school_id} · {membership.role}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </section>
+
+            {activeMembership && (
+              <p className="muted">
+                Signed in as <strong>{activeMembership.role}</strong> · Membership {activeMembership.status} · School ID {schoolId}
+              </p>
+            )}
+
+            <nav className="row" aria-label="School modules" style={{ gap: 8, flexWrap: "wrap", margin: "20px 0" }}>
+              {(["overview", "classes", "students"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  className={activeTab === tab ? "btn" : "btn secondary"}
+                  onClick={() => setActiveTab(tab)}
+                  aria-current={activeTab === tab ? "page" : undefined}
+                >
+                  {tab[0].toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+              <button className="btn secondary" onClick={() => void loadSchoolData()} disabled={dataLoading}>
+                {dataLoading ? "Refreshing…" : "Refresh"}
+              </button>
+            </nav>
+
+            {dataLoading ? (
+              <p>Loading school records…</p>
+            ) : (
+              <>
+                {activeTab === "overview" && (
+                  <>
+                    <section className="grid">
+                      <article className="stat"><span className="muted">Classes</span><h2>{classes.length}</h2></article>
+                      <article className="stat"><span className="muted">Student records</span><h2>{students.length}</h2></article>
+                      <article className="stat"><span className="muted">Your role</span><h2 style={{ textTransform: "capitalize" }}>{activeMembership?.role}</h2></article>
+                    </section>
+                    <section className="grid">
+                      <article className="card">
+                        <h2>Classes</h2>
+                        <p className="muted">Browse academic years, grades and sections.</p>
+                        <button className="btn secondary" onClick={() => setActiveTab("classes")}>View classes</button>
+                      </article>
+                      <article className="card">
+                        <h2>Students</h2>
+                        <p className="muted">Review registered student records.</p>
+                        <button className="btn secondary" onClick={() => setActiveTab("students")}>View students</button>
+                      </article>
+                    </section>
+                  </>
+                )}
+
+                {activeTab === "classes" && (
+                  <section className="card">
+                    <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <div><h2>Classes</h2><p className="muted">Classes available in this school.</p></div>
+                      {isAdmin && <button className="btn" onClick={() => setClassFormOpen(!classFormOpen)}>{classFormOpen ? "Close" : "＋ Add class"}</button>}
+                    </div>
+                    {classFormOpen && isAdmin && (
+                      <form onSubmit={createClass} className="field">
+                        <label>Class name<input required value={className} onChange={(e) => setClassName(e.target.value)} placeholder="e.g. Class 10" /></label>
+                        <label>Grade level<input value={gradeLevel} onChange={(e) => setGradeLevel(e.target.value)} placeholder="e.g. 10" /></label>
+                        <label>Section<input value={section} onChange={(e) => setSection(e.target.value)} placeholder="e.g. A" /></label>
+                        <label>Academic year<input required minLength={4} value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} /></label>
+                        <button className="btn" disabled={saving}>{saving ? "Saving…" : "Create class"}</button>
+                      </form>
+                    )}
+                    {classes.length === 0 ? <p className="muted">No classes have been added yet.</p> : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                          <thead><tr><th style={{ padding: 10 }}>Class</th><th style={{ padding: 10 }}>Grade</th><th style={{ padding: 10 }}>Section</th><th style={{ padding: 10 }}>Academic year</th></tr></thead>
+                          <tbody>{classes.map((item) => (
+                            <tr key={item.id} style={{ borderTop: "1px solid #e2eaed" }}>
+                              <td style={{ padding: 10 }}>{item.name}</td><td style={{ padding: 10 }}>{item.grade_level || "—"}</td><td style={{ padding: 10 }}>{item.section || "—"}</td><td style={{ padding: 10 }}>{item.academic_year}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {activeTab === "students" && (
+                  <section className="card">
+                    <div className="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <div><h2>Students</h2><p className="muted">Student registry for this school.</p></div>
+                      {isAdmin && <button className="btn" onClick={() => setStudentFormOpen(!studentFormOpen)}>{studentFormOpen ? "Close" : "＋ Register student"}</button>}
+                    </div>
+                    {studentFormOpen && isAdmin && (
+                      <form onSubmit={registerStudent} className="field">
+                        <label>Admission number<input required value={admissionNo} onChange={(e) => setAdmissionNo(e.target.value)} placeholder="e.g. RHS-2026-001" /></label>
+                        <label>First name<input required value={firstName} onChange={(e) => setFirstName(e.target.value)} /></label>
+                        <label>Last name<input value={lastName} onChange={(e) => setLastName(e.target.value)} /></label>
+                        <label>Date of birth<input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} /></label>
+                        <button className="btn" disabled={saving}>{saving ? "Saving…" : "Register student"}</button>
+                      </form>
+                    )}
+                    {students.length === 0 ? <p className="muted">No student records are available for this school.</p> : (
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                          <thead><tr><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Date of birth</th><th style={{ padding: 10 }}>Status</th></tr></thead>
+                          <tbody>{students.map((student) => (
+                            <tr key={student.id} style={{ borderTop: "1px solid #e2eaed" }}>
+                              <td style={{ padding: 10 }}>{student.admission_no}</td><td style={{ padding: 10 }}>{student.first_name} {student.last_name || ""}</td><td style={{ padding: 10 }}>{student.date_of_birth || "—"}</td><td style={{ padding: 10, textTransform: "capitalize" }}>{student.status}</td>
+                            </tr>
+                          ))}</tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                )}
+              </>
+            )}
+          </>
         )}
-        <p className="muted">
-          EduSync prototype · School modules are being developed.
-        </p>
+        <p className="muted" style={{ marginTop: 28 }}>EduSync prototype · Data access is enforced by the backend and Supabase row-level security.</p>
       </div>
     </main>
   );
