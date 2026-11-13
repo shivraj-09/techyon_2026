@@ -143,7 +143,8 @@ drop policy if exists student_voice_conversations_counsellor_select on public.st
 create policy student_voice_conversations_counsellor_select on public.student_voice_conversations
 for select to authenticated
 using (
-    exists (
+    (assigned_counsellor_id is null or assigned_counsellor_id = (select auth.uid()))
+    and exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_conversations.school_id
           and m.user_id = (select auth.uid())
@@ -200,6 +201,7 @@ using (
          and m.status = 'active'::public.membership_status
         where c.id = student_voice_messages.conversation_id
           and c.school_id = student_voice_messages.school_id
+          and (c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid()))
     )
 );
 
@@ -266,7 +268,7 @@ drop policy if exists student_voice_meetings_counsellor_update on public.student
 create policy student_voice_meetings_counsellor_update on public.student_voice_meeting_requests
 for update to authenticated
 using (
-    status = 'pending'
+    status in ('pending', 'approved')
     and exists (
         select 1 from public.school_memberships m
         where m.school_id = student_voice_meeting_requests.school_id
