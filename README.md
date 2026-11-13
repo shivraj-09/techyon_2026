@@ -38,7 +38,7 @@ A collaborative repository for our 24-hour hackathon build.
 - The counsellor workspace is at `/counsellor/dashboard`; the student portal is at `/student-voice`.
 
 ### Database safety
-The counsellor feature migrations are not yet applied to the hosted Supabase project. The repository still needs the canonical foundational schema for schools, memberships, students, classes, enrollments and teacher assignments before the complete migration chain can be tested against a disposable local PostgreSQL/Supabase instance. Do not apply the feature migrations to the hosted project until that validation is complete.
+The counsellor feature migrations are not yet applied to the hosted Supabase project. The canonical foundational schema has been recovered read-only from hosted migration history and is stored under backend/schema_snapshots/. The active migration filenames still need timestamp/order reconciliation before creating a runnable supabase/migrations chain. Do not apply feature migrations to the hosted project until that ordering is reviewed and a disposable local PostgreSQL/Supabase reset plus RLS tests pass.
 
 ## Branch workflow
 - `main` — stable, demo-ready version
