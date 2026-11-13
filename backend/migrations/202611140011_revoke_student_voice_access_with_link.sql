@@ -176,11 +176,8 @@ create policy student_voice_meetings_student_select
 on public.student_voice_meeting_requests
 for select to authenticated
 using (
-    (
-        requested_by = (select auth.uid())
-        and public.student_voice_owns_active_conversation(school_id, conversation_id)
-    )
-    or public.student_voice_counsellor_can_read_conversation(school_id, conversation_id)
+    requested_by = (select auth.uid())
+    and public.student_voice_owns_active_conversation(school_id, conversation_id)
 );
 
 drop policy if exists student_voice_meetings_counsellor_select on public.student_voice_meeting_requests;
