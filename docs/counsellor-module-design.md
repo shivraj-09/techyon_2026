@@ -49,7 +49,7 @@ This is the recommended default inferred from the project discussion; confirm be
 - `student_voice_conversations`: school_id, student_user_id (not exposed in API responses), public_ref, status, assigned_counsellor_id nullable, created_at, last_message_at.
 - `student_voice_identity_map`: conversation_id, student_id, created_at; strict counsellor-only access and never joined into normal conversation/message list endpoints.
 - `student_voice_messages`: conversation_id, sender_kind, sender_user_id nullable, body, created_at, read_at.
-- `student_voice_meeting_requests`: conversation_id, student_id, preferred_times, status, handled_by, created_at.
+- `student_voice_meeting_requests`: school_id, conversation_id, requested_by, preferred_times, status, handled_by, created_at. Identity reveal is available only after approval and is written to `student_voice_identity_reveal_audit` before the student record ID is returned.
 
 ## Authorization principles
 1. All records carry and validate `school_id`; never trust a client-supplied school or role without checking the authenticated membership.
@@ -76,7 +76,7 @@ This is the recommended default inferred from the project discussion; confirm be
 4. Implement referral intake/review API and test school/class isolation. (Initial code and migration are committed; runtime tests and live migration are pending.)
 5. Implement confidential cases and private notes. (Schema, RLS, and API routes are committed; runtime tests and live migration are pending.)
 6. Implement counselling sessions and notices. (Schema, RLS, and create/list APIs are committed; student audience delivery, registrations, runtime tests, and live migration are pending.)
-7. Implement Student Voice pseudonymous conversations, messages, and meeting requests. (Initial schema, RLS and API routes are committed; student account linking requires an admin to verify and link the Auth user ID to the student record. Safety escalation is not implemented.)
+7. Implement Student Voice pseudonymous conversations, messages, and meeting requests. (Initial schema, RLS, admin-managed student account linking, explicit approved-meeting identity reveal, and reveal audit trail are committed; student account linking requires an admin to verify the Auth user ID. Safety escalation is not implemented.)
 8. Add API tests for role boundaries, cross-school isolation, and non-disclosure of student identity.
 
 ## Non-goals for initial release
