@@ -111,3 +111,8 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f backend/tests/sql/verify_counsellor_migrations.sql
+      - name: Run multi-school RLS and Student Voice revocation tests
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f backend/tests/sql/test_counsellor_rls_behaviour.sql
