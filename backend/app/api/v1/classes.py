@@ -29,12 +29,15 @@ async def _request_classes(
     payload: dict | None = None,
 ) -> httpx.Response:
     url = f"{settings.SUPABASE_URL.rstrip('/')}/rest/v1/classes"
+    headers = _user_headers(credentials)
+    if method in ("POST", "PATCH"):
+        headers["Prefer"] = "return=representation"
     try:
         async with httpx.AsyncClient(timeout=12.0) as client:
             return await client.request(
                 method,
                 url,
-                headers=_user_headers(credentials),
+                headers=headers,
                 params=params,
                 json=payload,
             )
