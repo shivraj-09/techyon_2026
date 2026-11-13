@@ -18,7 +18,6 @@ declare
     v_payment public.fee_payments%rowtype;
     v_total_paid numeric(12,2);
     v_outstanding numeric(12,2);
-    v_result jsonb;
 begin
     v_user_id := auth.uid();
 
@@ -41,7 +40,7 @@ begin
         raise exception 'Payment amount must be greater than zero' using errcode = '22023';
     end if;
 
-    if p_payment_method not in ('cash', 'upi', 'bank_transfer', 'card', 'cheque', 'other') then
+    if p_payment_method not in ('cash', 'upi', 'bank_transfer', 'card', 'other') then
         raise exception 'Invalid payment method' using errcode = '22023';
     end if;
 
@@ -101,8 +100,7 @@ begin
     )
     returning * into v_payment;
 
-    v_result := to_jsonb(v_payment);
-    return v_result;
+    return to_jsonb(v_payment);
 end;
 $$;
 
