@@ -157,5 +157,5 @@ create trigger counselling_sessions_updated_at before update on public.counselli
 for each row execute function public.set_counselling_session_updated_at();
 
 drop trigger if exists counselling_notices_updated_at on public.counselling_notices;
-create trigger counselling_notices_updated_at before update on public.counselling_sessions
+create trigger counselling_notices_updated_at before update on public.counselling_notices
 for each row execute function public.set_counselling_session_updated_at();
