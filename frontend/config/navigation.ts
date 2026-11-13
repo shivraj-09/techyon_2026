@@ -1,6 +1,6 @@
 import type { IconName } from "@/components/ui/Icon";
 
-export type UserRole = "admin" | "teacher" | "parent";
+export type UserRole = "admin" | "teacher" | "parent" | "counsellor";
 
 export interface NavItemConfig {
   id: string;
@@ -125,6 +125,19 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         icon: "bell",
         badge: "2",
       },
+    ],
+  },
+  counsellor: {
+    role: "counsellor",
+    roleLabel: "School Counsellor",
+    defaultUserName: "Counsellor",
+    defaultUserEmail: "counsellor@institution.in",
+    navItems: [
+      { id: "dashboard", label: "Counsellor Dashboard", href: "/counsellor/dashboard", icon: "layout-dashboard" },
+      { id: "referrals", label: "Referrals", href: "/counsellor/dashboard#referrals", icon: "inbox" },
+      { id: "cases", label: "Confidential Cases", href: "/counsellor/dashboard#cases", icon: "file-text" },
+      { id: "sessions", label: "Sessions & Notices", href: "/counsellor/dashboard#sessions", icon: "calendar-check" },
+      { id: "student-voice", label: "Student Voice", href: "/counsellor/dashboard#student-voice", icon: "users" },
     ],
   },
   parent: {
