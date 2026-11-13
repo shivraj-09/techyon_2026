@@ -372,6 +372,7 @@ class StudentVoiceMigrationContractTests(TestCase):
 
         migrations = Path(__file__).resolve().parents[1] / "migrations"
         cls.student_voice_base = (migrations / "202611140005_create_student_voice.sql").read_text()
+        cls.workflow_transitions = (migrations / "202611140006_enforce_counsellor_workflow_transitions.sql").read_text()
         cls.student_access = (migrations / "202611140011_revoke_student_voice_access_with_link.sql").read_text()
         cls.identity_reveal = (migrations / "202611140012_preserve_identity_reveal_after_completion.sql").read_text()
         cls.terminal_revoke = (migrations / "202611140013_make_student_voice_revocation_terminal.sql").read_text()
@@ -417,6 +418,29 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("m.role = 'counsellor'::public.membership_role", policy)
         self.assertIn("m.status = 'active'::public.membership_status", policy)
         self.assertIn("c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid())", policy)
+
+    def test_student_meeting_request_reads_and_inserts_require_active_link(self):
+        sql = self.student_access.lower()
+        select_start = sql.index("create policy student_voice_meetings_student_select")
+        select_end = sql.index("drop policy if exists student_voice_meetings_student_insert", select_start)
+        select_policy = sql[select_start:select_end]
+        self.assertIn("requested_by = (select auth.uid())", select_policy)
+        self.assertIn("l.status = 'active'", select_policy)
+        insert_start = sql.index("create policy student_voice_meetings_student_insert")
+        insert_policy = sql[insert_start:]
+        self.assertIn("requested_by = (select auth.uid())", insert_policy)
+        self.assertIn("c.status = 'open'", insert_policy)
+        self.assertIn("l.status = 'active'", insert_policy)
+
+    def test_meeting_request_trigger_freezes_request_content(self):
+        sql = self.workflow_transitions.lower()
+        start = sql.index("create or replace function public.enforce_student_voice_meeting_transition")
+        end = sql.index("drop trigger if exists student_voice_meeting_transition_guard", start)
+        function = sql[start:end]
+        for field in ("school_id", "conversation_id", "requested_by", "preferred_times", "student_message"):
+            self.assertIn(f"new.{field} is distinct from old.{field}", function)
+        self.assertIn("new.handled_by is distinct from (select auth.uid())", function)
+        self.assertIn("new.handled_at is null", function)
 
     def test_counsellor_inbox_does_not_expose_student_identity_fields(self):
         from pathlib import Path
