@@ -759,6 +759,7 @@ async def review_student_voice_meeting_request(
 async def reveal_meeting_request_student_identity(
     school_id: UUID,
     request_id: UUID,
+    current_user: dict = Depends(get_current_user),
     _counsellor: dict = Depends(require_school_roles("counsellor")),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
@@ -788,6 +789,19 @@ async def reveal_meeting_request_student_identity(
     ))
     if not identity_rows:
         raise HTTPException(status_code=404, detail="Student identity is unavailable")
+    audit_response = await _request(
+        "student_voice_identity_reveal_audit", "POST", credentials,
+        params={"select": "id,revealed_at"},
+        payload={
+            "school_id": str(school_id),
+            "meeting_request_id": str(request_id),
+            "counsellor_user_id": current_user["id"],
+            "student_id": identity_rows[0]["student_id"],
+        },
+    )
+    if audit_response.status_code not in (200, 201):
+        raise HTTPException(status_code=503, detail="Identity reveal could not be audited; identity was not disclosed")
+    _rows(audit_response, allowed=(200, 201))
     return {
         "success": True,
         "identity": {
