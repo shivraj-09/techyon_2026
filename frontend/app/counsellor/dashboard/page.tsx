@@ -9,6 +9,7 @@ type Referral = { id: string; student_id: string; class_id: string; category: st
 type CaseRecord = { id: string; student_id: string; referral_id: string; status: string; opened_at: string; closed_at?: string | null };
 type Conversation = { id: string; public_ref: string; status: string; assigned_counsellor_id?: string | null; last_message_at?: string | null };
 type Message = { id: string; sender_kind: string; body: string; created_at: string };
+type CaseNote = { id: string; case_id: string; author_user_id: string; note_body: string; created_at: string };
 type MeetingRequest = { id: string; conversation_id: string; preferred_times: string; student_message?: string | null; status: string; created_at: string };
 type SessionRecord = { id: string; title: string; description: string; audience: string; starts_at: string; ends_at: string; status: string; location?: string | null };
 type NoticeRecord = { id: string; title: string; body: string; audience: string; publish_at: string; status: string };
@@ -32,6 +33,8 @@ export default function CounsellorDashboardPage() {
   const [messageDraft, setMessageDraft] = useState("");
   const [noteCaseId, setNoteCaseId] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
+  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
+  const [notesLoading, setNotesLoading] = useState(false);
   const [sessionTitle, setSessionTitle] = useState("");
   const [sessionDescription, setSessionDescription] = useState("");
   const [sessionStart, setSessionStart] = useState("");
@@ -155,6 +158,22 @@ export default function CounsellorDashboardPage() {
     await loadWorkspace(schoolId);
   }
 
+  const loadCaseNotes = useCallback(async (caseId: string) => {
+    if (!caseId) { setCaseNotes([]); return; }
+    setNotesLoading(true);
+    try {
+      const data = await apiFetch(`/schools/${schoolId}/counselling/cases/${caseId}/notes`);
+      setCaseNotes(data.notes || []);
+    } finally {
+      setNotesLoading(false);
+    }
+  }, [apiFetch, schoolId]);
+
+  useEffect(() => {
+    if (!token || !schoolId || !noteCaseId) { setCaseNotes([]); return; }
+    loadCaseNotes(noteCaseId).catch((err) => setError(err instanceof Error ? err.message : "Could not load private notes."));
+  }, [token, schoolId, noteCaseId, loadCaseNotes]);
+
   async function saveCaseNote(event: FormEvent) {
     event.preventDefault();
     if (!noteCaseId || !noteDraft.trim()) return;
@@ -164,6 +183,7 @@ export default function CounsellorDashboardPage() {
       });
       setNoteDraft("");
       setNotice("Private case note saved.");
+      await loadCaseNotes(noteCaseId);
     });
   }
 
@@ -309,6 +329,14 @@ export default function CounsellorDashboardPage() {
                 <label>Private note<textarea value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} required maxLength={10000} rows={3} /></label>
                 <Button type="submit" disabled={!noteCaseId || !noteDraft.trim()}>Save private note</Button>
               </form>
+              {noteCaseId && <div className="es-stack" aria-live="polite">
+                <h3>Private case history</h3>
+                {notesLoading ? <p className="es-muted">Loading notes…</p> : caseNotes.length === 0 ? <p className="es-muted">No private notes recorded for this case.</p> : caseNotes.map((note) => (
+                  <article key={note.id} className="es-list-row">
+                    <div><p>{note.note_body}</p><small>{new Date(note.created_at).toLocaleString()}</small></div>
+                  </article>
+                ))}
+              </div>}
             </section>
 
             <section id="sessions" className="es-card">
