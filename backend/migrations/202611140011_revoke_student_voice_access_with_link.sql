@@ -92,14 +92,11 @@ as $$$
         where c.school_id = p_school_id
           and c.id = p_conversation_id
           and (c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid()))
-          and not (
-              c.student_user_id = (select auth.uid())
-              and exists (
-                  select 1 from public.student_voice_student_links l
-                  where l.school_id = c.school_id
-                    and l.student_user_id = (select auth.uid())
-                    and l.status = 'active'
-              )
+          and not exists (
+              select 1 from public.student_voice_student_links l
+              where l.school_id = c.school_id
+                and l.student_user_id = (select auth.uid())
+                and l.status = 'active'
           )
     );
 $$;
@@ -126,14 +123,11 @@ as $$$
           and c.id = p_conversation_id
           and c.status = 'open'
           and c.assigned_counsellor_id = (select auth.uid())
-          and not (
-              c.student_user_id = (select auth.uid())
-              and exists (
-                  select 1 from public.student_voice_student_links l
-                  where l.school_id = c.school_id
-                    and l.student_user_id = (select auth.uid())
-                    and l.status = 'active'
-              )
+          and not exists (
+              select 1 from public.student_voice_student_links l
+              where l.school_id = c.school_id
+                and l.student_user_id = (select auth.uid())
+                and l.status = 'active'
           )
     );
 $$;
@@ -159,14 +153,11 @@ as $$
         where c.school_id = p_school_id
           and c.id = p_conversation_id
           and c.assigned_counsellor_id = (select auth.uid())
-          and not (
-              c.student_user_id = (select auth.uid())
-              and exists (
-                  select 1 from public.student_voice_student_links l
-                  where l.school_id = c.school_id
-                    and l.student_user_id = (select auth.uid())
-                    and l.status = 'active'
-              )
+          and not exists (
+              select 1 from public.student_voice_student_links l
+              where l.school_id = c.school_id
+                and l.student_user_id = (select auth.uid())
+                and l.status = 'active'
           )
     );
 $$;
