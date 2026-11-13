@@ -78,10 +78,18 @@ revoke all on public.student_voice_conversations from anon;
 revoke all on public.student_voice_messages from anon;
 revoke all on public.student_voice_meeting_requests from anon;
 
-grant select, insert, update on public.student_voice_student_links to authenticated;
-grant select, insert, update on public.student_voice_conversations to authenticated;
-grant select, insert on public.student_voice_messages to authenticated;
-grant select, insert, update on public.student_voice_meeting_requests to authenticated;
+grant select (id, school_id, student_id, student_user_id, status, linked_by, created_at),
+      insert (school_id, student_id, student_user_id, linked_by),
+      update (status) on public.student_voice_student_links to authenticated;
+grant select (id, school_id, public_ref, status, assigned_counsellor_id, created_at, last_message_at),
+      insert (school_id, student_user_id),
+      update (status, assigned_counsellor_id) on public.student_voice_conversations to authenticated;
+grant select (id, school_id, conversation_id, sender_kind, body, created_at, read_at),
+      insert (school_id, conversation_id, sender_kind, sender_user_id, body)
+      on public.student_voice_messages to authenticated;
+grant select (id, school_id, conversation_id, preferred_times, student_message, status, handled_by, handled_at, created_at),
+      insert (school_id, conversation_id, requested_by, preferred_times, student_message),
+      update (status, handled_by, handled_at) on public.student_voice_meeting_requests to authenticated;
 
 -- A school admin may create/revoke account links; the linked student account can read its own link.
 drop policy if exists student_voice_links_admin_manage on public.student_voice_student_links;
@@ -283,8 +291,30 @@ create policy student_voice_links_identity_student_read on public.student_voice_
 for select to authenticated
 using (student_user_id = (select auth.uid()) and status = 'active');
 
+drop policy if exists student_voice_links_counsellor_reveal on public.student_voice_student_links;
+create policy student_voice_links_counsellor_reveal on public.student_voice_student_links
+for select to authenticated
+using (
+    status = 'active'
+    and exists (
+        select 1
+        from public.student_voice_conversations c
+        join public.student_voice_meeting_requests mr
+          on mr.school_id = c.school_id
+         and mr.conversation_id = c.id
+         and mr.status = 'approved'
+        join public.school_memberships m
+          on m.school_id = c.school_id
+         and m.user_id = (select auth.uid())
+         and m.role = 'counsellor'::public.membership_role
+         and m.status = 'active'::public.membership_status
+        where c.school_id = student_voice_student_links.school_id
+          and c.student_user_id = student_voice_student_links.student_user_id
+    )
+);
+
 create or replace function public.set_student_voice_last_message_at()
-returns trigger language plpgsql set search_path = ''
+returns trigger language plpgsql security definer set search_path = ''
 as $$
 begin
     update public.student_voice_conversations
@@ -297,3 +327,5 @@ $$;
 drop trigger if exists student_voice_message_last_message on public.student_voice_messages;
 create trigger student_voice_message_last_message after insert on public.student_voice_messages
 for each row execute function public.set_student_voice_last_message_at();
+
+revoke all on function public.set_student_voice_last_message_at() from public, anon, authenticated;
