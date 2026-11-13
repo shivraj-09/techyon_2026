@@ -116,7 +116,7 @@ export const ROLE_NAVIGATION: Record<UserRole, RoleProfileConfig> = {
         id: "student-referrals",
         label: "Student Referrals",
         href: "/teacher/referrals",
-        icon: "heart-handshake",
+        icon: "clipboard-check",
       },
       {
         id: "attendance",
