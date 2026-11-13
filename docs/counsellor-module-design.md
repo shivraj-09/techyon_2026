@@ -92,8 +92,8 @@ This is the recommended default inferred from the project discussion; confirm be
 
 - GitHub Actions runs frontend dependency installation and Next.js production build, backend dependency installation and Python compilation, and the counsellor unittest suite.
 - Route tests mock Supabase/PostgREST HTTP responses; SQL contract tests inspect policy and trigger definitions. These are not PostgreSQL execution tests.
-- The repository still lacks canonical foundational schema migrations/snapshot for schools, memberships, students, classes, enrollments, and class-teacher assignments. Do not invent this schema or apply feature migrations to the hosted project as a substitute.
-- Recover a schema-only dump from the actual Supabase project or original backend owner, then run the complete migration chain and RLS tests against a disposable local Supabase/PostgreSQL instance before production deployment.
+- The canonical foundational schema has now been recovered read-only from hosted Supabase migration history and stored under backend/schema_snapshots/. The active repository migration filenames currently sort before the recovered baseline timestamps, so migration history/order must be reconciled before creating an active supabase/migrations chain. Do not move these snapshots into an active migration directory or apply them until that ordering is reviewed.
+- Reconcile the recovered snapshots with the repository's feature migrations, then run the complete migration chain and RLS tests against a disposable local Supabase/PostgreSQL instance before production deployment. Hosted Supabase remains unchanged.
 
 ## Non-goals for initial release
 - Automated mental-health diagnosis or risk scoring.
