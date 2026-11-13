@@ -71,6 +71,39 @@ class CounsellingSchedulingSchemaTests(TestCase):
             )
 
 
+    def test_session_rejects_timezone_naive_datetimes(self):
+        start = datetime(2026, 11, 20, 10, 0)
+        with self.assertRaises(ValidationError):
+            CounsellingSessionCreate(
+                title="Exam support",
+                description="A group session about exam preparation.",
+                audience="students",
+                starts_at=start,
+                ends_at=start + timedelta(hours=1),
+            )
+
+    def test_notice_rejects_timezone_naive_publication_time(self):
+        publish_at = datetime(2026, 11, 20, 10, 0)
+        with self.assertRaises(ValidationError):
+            CounsellingNoticeCreate(
+                title="Wellbeing notice",
+                body="Information about available student support.",
+                audience="teachers",
+                publish_at=publish_at,
+            )
+
+    def test_notice_rejects_timezone_naive_expiry_time(self):
+        publish_at = datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc)
+        with self.assertRaises(ValidationError):
+            CounsellingNoticeCreate(
+                title="Wellbeing notice",
+                body="Information about available student support.",
+                audience="teachers",
+                publish_at=publish_at,
+                expires_at=datetime(2026, 11, 21, 10, 0),
+            )
+
+
 class StudentVoiceSchemaTests(TestCase):
     def test_message_is_trimmed(self):
         payload = StudentVoiceMessageCreate(body="  Hello counsellor  ")
