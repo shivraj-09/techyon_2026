@@ -145,12 +145,18 @@ async def list_referrals(
     referral_status: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    membership: dict = Depends(require_school_roles("teacher", "counsellor")),
+    current_user: dict = Depends(get_current_user),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
     """Counsellors see their school inbox; teachers see only referrals they submitted."""
-    if membership.get("school_id") != str(school_id):
-        raise HTTPException(status_code=403, detail="Invalid school membership")
+    memberships = await fetch_active_memberships(current_user, credentials)
+    school_roles = {
+        item.get("role")
+        for item in memberships
+        if item.get("school_id") == str(school_id) and item.get("status") == "active"
+    }
+    if not school_roles.intersection({"teacher", "counsellor"}):
+        raise HTTPException(status_code=403, detail="An active teacher or counsellor membership is required")
     if referral_status and referral_status not in {
         "submitted", "under_review", "clarification_requested", "accepted", "declined", "closed"
     }:
