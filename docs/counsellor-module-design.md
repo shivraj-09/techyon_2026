@@ -19,10 +19,10 @@ This is the recommended default inferred from the project discussion; confirm be
 - Admins may manage counsellor membership but do not receive access to confidential case notes or Student Voice content by virtue of being admins.
 
 ### 2. Confidential counselling cases
-- A case is created from an accepted referral or a counsellor-initiated meeting.
+- A case is created from an accepted referral assigned to the counsellor. Counsellor-initiated cases are deferred until a dedicated student lookup/meeting flow exists.
 - Case records hold restricted notes, status, assigned counsellor, student, and timestamps.
-- Case notes are separate records with author and audit metadata.
-- Access is restricted to the assigned counsellor and explicitly authorized counsellor collaborators; no general school-admin or teacher access.
+- Case notes are separate, append-only records with author and timestamp metadata; note bodies are not returned by referral endpoints.
+- Access is restricted to the assigned counsellor; collaborator access is deferred. No general school-admin or teacher access.
 - Every read/write to highly sensitive case content should be auditable at the API layer. Avoid logging note bodies or message bodies.
 
 ### 3. Sessions and notices
@@ -42,8 +42,8 @@ This is the recommended default inferred from the project discussion; confirm be
 
 ## Proposed data model
 - `counsellor_referrals`: school_id, student_id, submitted_by, category, summary, urgency, status, assigned_counsellor_id, timestamps.
-- `counselling_cases`: school_id, student_id, referral_id nullable, assigned_counsellor_id, status, opened_at, closed_at.
-- `counselling_case_notes`: case_id, author_user_id, note_body, created_at, updated_at.
+- `counselling_cases`: school_id, student_id, required referral_id, assigned_counsellor_id, status, opened_at, closed_at.
+- `counselling_case_notes`: case_id, author_user_id, note_body, created_at (append-only).
 - `counselling_sessions`: school_id, created_by, title, description, audience, starts_at, ends_at, capacity, location, status.
 - `counselling_session_registrations`: session_id, school_id, registrant_user_id nullable, student_id nullable, status, created_at.
 - `student_voice_conversations`: school_id, public_ref, status, assigned_counsellor_id nullable, created_at, last_message_at.
@@ -63,7 +63,7 @@ This is the recommended default inferred from the project discussion; confirm be
 
 ## API modules (planned)
 - `/schools/{school_id}/counsellor/referrals`: teacher create/list-own; counsellor school inbox/list and review/status transitions. Implemented in `backend/app/api/v1/counsellor.py` with request models in `backend/app/schemas/counsellor.py`.
-- `/schools/{school_id}/counselling/cases`: counsellor-only case lifecycle and notes.
+- `/schools/{school_id}/counselling/cases`: counsellor-only case creation from accepted referrals, case listing/status, and private append-only notes. Implemented in `backend/app/api/v1/counsellor.py`.
 - `/schools/{school_id}/counselling/sessions`: create, publish, list, register, cancel.
 - `/schools/{school_id}/student-voice/conversations`: student create/list own, counsellor inbox.
 - `/schools/{school_id}/student-voice/conversations/{conversation_id}/messages`: read/send with strict conversation membership checks.
@@ -74,6 +74,7 @@ This is the recommended default inferred from the project discussion; confirm be
 2. Add the counsellor role safely and update backend role validation.
 3. Add schema and RLS migrations; review with Supabase advisors before applying to the hosted project.
 4. Implement referral intake/review API and test school/class isolation. (Initial code and migration are committed; runtime tests and live migration are pending.)
+5. Implement confidential cases and private notes. (Schema, RLS, and API routes are committed; runtime tests and live migration are pending.)
 5. Implement private cases and audit events.
 6. Implement sessions/notices.
 7. Implement Student Voice, pseudonymous identity separation, meeting requests, and safety escalation.
