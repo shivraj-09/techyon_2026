@@ -371,6 +371,7 @@ class StudentVoiceMigrationContractTests(TestCase):
         from pathlib import Path
 
         migrations = Path(__file__).resolve().parents[1] / "migrations"
+        cls.student_voice_base = (migrations / "202611140005_create_student_voice.sql").read_text()
         cls.student_access = (migrations / "202611140011_revoke_student_voice_access_with_link.sql").read_text()
         cls.identity_reveal = (migrations / "202611140012_preserve_identity_reveal_after_completion.sql").read_text()
         cls.terminal_revoke = (migrations / "202611140013_make_student_voice_revocation_terminal.sql").read_text()
@@ -398,6 +399,34 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertLess(audit, returned)
         self.assertIn("security definer", sql)
         self.assertIn("set search_path = ''", sql)
+
+    def test_counsellor_message_reads_require_active_membership_and_assignment(self):
+        sql = self.student_voice_base.lower()
+        start = sql.index("create policy student_voice_messages_counsellor_read")
+        end = sql.index("drop policy if exists student_voice_messages_participant_insert", start)
+        policy = sql[start:end]
+        self.assertIn("m.role = 'counsellor'::public.membership_role", policy)
+        self.assertIn("m.status = 'active'::public.membership_status", policy)
+        self.assertIn("c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid())", policy)
+
+    def test_counsellor_meeting_reads_require_active_membership_and_assignment(self):
+        sql = self.student_voice_base.lower()
+        start = sql.index("create policy student_voice_meetings_counsellor_select")
+        end = sql.index("drop policy if exists student_voice_meetings_student_insert", start)
+        policy = sql[start:end]
+        self.assertIn("m.role = 'counsellor'::public.membership_role", policy)
+        self.assertIn("m.status = 'active'::public.membership_status", policy)
+        self.assertIn("c.assigned_counsellor_id is null or c.assigned_counsellor_id = (select auth.uid())", policy)
+
+    def test_counsellor_inbox_does_not_expose_student_identity_fields(self):
+        from pathlib import Path
+        api = (Path(__file__).resolve().parents[1] / "app" / "api" / "v1" / "counsellor.py").read_text()
+        start = api.index("async def list_student_voice_inbox")
+        end = api.index("@student_voice_router.get", start)
+        handler = api[start:end]
+        self.assertIn("public_ref", handler)
+        self.assertNotIn("student_user_id", handler)
+        self.assertNotIn("student_id", handler)
 
     def test_link_revocation_is_terminal_and_identity_fields_are_immutable(self):
         sql = self.terminal_revoke.lower()
