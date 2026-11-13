@@ -22,6 +22,14 @@ as $$
         where c.school_id = p_school_id
           and c.id = p_conversation_id
           and c.student_user_id = (select auth.uid())
+          and not exists (
+              select 1
+              from public.school_memberships m
+              where m.school_id = c.school_id
+                and m.user_id = (select auth.uid())
+                and m.role = 'counsellor'::public.membership_role
+                and m.status = 'active'::public.membership_status
+          )
           and (not p_require_open or c.status = 'open')
     );
 $$;
