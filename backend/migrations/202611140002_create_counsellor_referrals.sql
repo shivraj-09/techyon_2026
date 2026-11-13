@@ -13,7 +13,6 @@ create table if not exists public.counsellor_referrals (
     summary text not null check (char_length(btrim(summary)) between 10 and 3000),
     urgency text not null default 'normal' check (urgency in ('low', 'normal', 'high')),
     status text not null default 'submitted' check (status in ('submitted', 'under_review', 'clarification_requested', 'accepted', 'declined', 'closed')),
-    counsellor_response text check (counsellor_response is null or char_length(counsellor_response) <= 2000),
     assigned_counsellor_id uuid references auth.users(id) on delete set null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
@@ -33,7 +32,9 @@ create index if not exists counsellor_referrals_student_created_idx
 alter table public.counsellor_referrals enable row level security;
 
 revoke all on public.counsellor_referrals from anon;
-grant select, insert, update on public.counsellor_referrals to authenticated;
+grant select (id, school_id, student_id, class_id, submitted_by, category, summary, urgency, status, assigned_counsellor_id, created_at, updated_at) on public.counsellor_referrals to authenticated;
+grant insert (school_id, student_id, class_id, submitted_by, category, summary, urgency) on public.counsellor_referrals to authenticated;
+grant update (status, assigned_counsellor_id) on public.counsellor_referrals to authenticated;
 
 drop policy if exists counsellor_referrals_teacher_insert on public.counsellor_referrals;
 create policy counsellor_referrals_teacher_insert
