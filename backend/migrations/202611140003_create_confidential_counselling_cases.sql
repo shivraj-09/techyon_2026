@@ -7,7 +7,7 @@ create table if not exists public.counselling_cases (
     id uuid primary key default gen_random_uuid(),
     school_id uuid not null,
     student_id uuid not null,
-    referral_id uuid,
+    referral_id uuid not null,
     assigned_counsellor_id uuid not null references auth.users(id) on delete restrict,
     status text not null default 'open' check (status in ('open', 'in_progress', 'closed')),
     opened_at timestamptz not null default now(),
@@ -44,7 +44,9 @@ alter table public.counselling_case_notes enable row level security;
 
 revoke all on public.counselling_cases from anon;
 revoke all on public.counselling_case_notes from anon;
-grant select, insert, update on public.counselling_cases to authenticated;
+grant select on public.counselling_cases to authenticated;
+grant insert (school_id, student_id, referral_id, assigned_counsellor_id) on public.counselling_cases to authenticated;
+grant update (status) on public.counselling_cases to authenticated;
 grant select, insert on public.counselling_case_notes to authenticated;
 
 drop policy if exists counselling_cases_counsellor_select on public.counselling_cases;
@@ -73,16 +75,13 @@ with check (
           and m.role = 'counsellor'::public.membership_role
           and m.status = 'active'::public.membership_status
     )
-    and (
-        referral_id is null
-        or exists (
-            select 1 from public.counsellor_referrals r
-            where r.id = counselling_cases.referral_id
-              and r.school_id = counselling_cases.school_id
-              and r.student_id = counselling_cases.student_id
-              and r.status = 'accepted'
-              and r.assigned_counsellor_id = (select auth.uid())
-        )
+    and exists (
+        select 1 from public.counsellor_referrals r
+        where r.id = counselling_cases.referral_id
+          and r.school_id = counselling_cases.school_id
+          and r.student_id = counselling_cases.student_id
+          and r.status = 'accepted'
+          and r.assigned_counsellor_id = (select auth.uid())
     )
 );
 
