@@ -87,7 +87,7 @@ grant select (id, school_id, public_ref, status, assigned_counsellor_id, created
 grant select (id, school_id, conversation_id, sender_kind, body, created_at, read_at),
       insert (school_id, conversation_id, sender_kind, sender_user_id, body)
       on public.student_voice_messages to authenticated;
-grant select (id, school_id, conversation_id, requested_by, preferred_times, student_message, status, handled_by, handled_at, created_at),
+grant select (id, school_id, conversation_id, preferred_times, student_message, status, handled_by, handled_at, created_at),
       insert (school_id, conversation_id, requested_by, preferred_times, student_message),
       update (status, handled_by, handled_at) on public.student_voice_meeting_requests to authenticated;
 
@@ -311,29 +311,6 @@ create policy student_voice_links_identity_student_read on public.student_voice_
 for select to authenticated
 using (student_user_id = (select auth.uid()) and status = 'active');
 
-drop policy if exists student_voice_links_counsellor_reveal on public.student_voice_student_links;
-create policy student_voice_links_counsellor_reveal on public.student_voice_student_links
-for select to authenticated
-using (
-    status = 'active'
-    and exists (
-        select 1
-        from public.student_voice_conversations c
-        join public.student_voice_meeting_requests mr
-          on mr.school_id = c.school_id
-         and mr.conversation_id = c.id
-         and mr.status = 'approved'
-        join public.school_memberships m
-          on m.school_id = c.school_id
-         and m.user_id = (select auth.uid())
-         and m.role = 'counsellor'::public.membership_role
-         and m.status = 'active'::public.membership_status
-        where c.assigned_counsellor_id = (select auth.uid())
-          and c.school_id = student_voice_student_links.school_id
-          and c.student_user_id = student_voice_student_links.student_user_id
-    )
-);
-
 create or replace function public.set_student_voice_last_message_at()
 returns trigger language plpgsql security definer set search_path = ''
 as $$
@@ -367,48 +344,68 @@ create index if not exists student_voice_identity_audit_school_time_idx
     on public.student_voice_identity_reveal_audit (school_id, revealed_at desc);
 alter table public.student_voice_identity_reveal_audit enable row level security;
 revoke all on public.student_voice_identity_reveal_audit from anon;
-grant insert (school_id, meeting_request_id, counsellor_user_id, student_id) on public.student_voice_identity_reveal_audit to authenticated;
-grant select (id, school_id, meeting_request_id, counsellor_user_id, student_id, revealed_at) on public.student_voice_identity_reveal_audit to authenticated;
 
-drop policy if exists student_voice_identity_audit_counsellor_insert on public.student_voice_identity_reveal_audit;
-create policy student_voice_identity_audit_counsellor_insert on public.student_voice_identity_reveal_audit
-for insert to authenticated
-with check (
-    counsellor_user_id = (select auth.uid())
-    and exists (
-        select 1 from public.school_memberships m
-        where m.school_id = student_voice_identity_reveal_audit.school_id
-          and m.user_id = (select auth.uid())
-          and m.role = 'counsellor'::public.membership_role
-          and m.status = 'active'::public.membership_status
-    )
-    and exists (
-        select 1
-        from public.student_voice_meeting_requests mr
-        join public.student_voice_conversations c
-          on c.school_id = mr.school_id
-         and c.id = mr.conversation_id
-        join public.student_voice_student_links l
-          on l.school_id = c.school_id
-         and l.student_user_id = c.student_user_id
-         and l.student_id = student_voice_identity_reveal_audit.student_id
-         and l.status = 'active'
-        where mr.id = student_voice_identity_reveal_audit.meeting_request_id
-          and mr.school_id = student_voice_identity_reveal_audit.school_id
-          and mr.status = 'approved'
-          and c.assigned_counsellor_id = (select auth.uid())
-    )
-);
-drop policy if exists student_voice_identity_audit_counsellor_read_own on public.student_voice_identity_reveal_audit;
-create policy student_voice_identity_audit_counsellor_read_own on public.student_voice_identity_reveal_audit
-for select to authenticated
-using (
-    counsellor_user_id = (select auth.uid())
-    and exists (
-        select 1 from public.school_memberships m
-        where m.school_id = student_voice_identity_reveal_audit.school_id
-          and m.user_id = (select auth.uid())
-          and m.role = 'counsellor'::public.membership_role
-          and m.status = 'active'::public.membership_status
-    )
-);
+
+-- Atomic, audited identity reveal. No counsellor receives direct SELECT access to the identity map.
+create or replace function public.reveal_student_voice_identity(
+    p_school_id uuid,
+    p_meeting_request_id uuid
+)
+returns table (
+    student_id uuid,
+    meeting_request_id uuid,
+    conversation_id uuid,
+    revealed_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+    v_student_id uuid;
+    v_conversation_id uuid;
+    v_revealed_at timestamptz;
+begin
+    if auth.uid() is null then
+        raise exception 'Authentication required' using errcode = '42501';
+    end if;
+
+    select l.student_id, c.id
+      into v_student_id, v_conversation_id
+      from public.student_voice_meeting_requests mr
+      join public.student_voice_conversations c
+        on c.school_id = mr.school_id
+       and c.id = mr.conversation_id
+      join public.student_voice_student_links l
+        on l.school_id = c.school_id
+       and l.student_user_id = c.student_user_id
+       and l.status = 'active'
+      join public.school_memberships m
+        on m.school_id = c.school_id
+       and m.user_id = (select auth.uid())
+       and m.role = 'counsellor'::public.membership_role
+       and m.status = 'active'::public.membership_status
+     where mr.id = p_meeting_request_id
+       and mr.school_id = p_school_id
+       and mr.status = 'approved'
+       and c.assigned_counsellor_id = (select auth.uid())
+     limit 1;
+
+    if v_student_id is null then
+        raise exception 'Approved meeting request not found or access denied' using errcode = '42501';
+    end if;
+
+    v_revealed_at := now();
+    insert into public.student_voice_identity_reveal_audit (
+        school_id, meeting_request_id, counsellor_user_id, student_id, revealed_at
+    ) values (
+        p_school_id, p_meeting_request_id, (select auth.uid()), v_student_id, v_revealed_at
+    );
+
+    return query
+    select v_student_id, p_meeting_request_id, v_conversation_id, v_revealed_at;
+end;
+$$;
+
+revoke all on function public.reveal_student_voice_identity(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.reveal_student_voice_identity(uuid, uuid) to authenticated;
