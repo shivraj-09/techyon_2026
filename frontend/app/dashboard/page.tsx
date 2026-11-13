@@ -37,12 +37,20 @@ type FeeBalance = {
   due_date: string;
   status: string;
 };
+type AttendanceStatus = "present" | "absent" | "late" | "excused";
 type AttendanceRecord = {
   id: string;
   student_id: string;
   attendance_date: string;
-  status: "present" | "absent" | "late" | "excused";
+  status: AttendanceStatus;
   remarks: string | null;
+};
+type RosterStudent = {
+  id: string;
+  admission_no: string;
+  first_name: string;
+  last_name: string | null;
+  roll_number: number | null;
 };
 
 const apiBase = (
@@ -82,6 +90,9 @@ export default function DashboardPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [feeBalances, setFeeBalances] = useState<FeeBalance[]>([]);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+  const [attendanceRoster, setAttendanceRoster] = useState<RosterStudent[]>([]);
+  const [attendanceDraft, setAttendanceDraft] = useState<Record<string, AttendanceStatus>>({});
+  const [attendanceSaving, setAttendanceSaving] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(() => {
     const now = new Date();
@@ -197,16 +208,65 @@ export default function DashboardPage() {
         `/api/v1/schools/${schoolId}/classes/${selectedClassId}/attendance?attendance_date=${attendanceDate}`,
         token,
       );
-      setAttendanceRecords(result.records || []);
+      const records = result.records || [];
+      setAttendanceRecords(records);
+      if (activeMembership?.role === "admin" || activeMembership?.role === "teacher") {
+        const rosterResult = await apiRequest<{ students: RosterStudent[] }>(
+          `/api/v1/schools/${schoolId}/classes/${selectedClassId}/roster`,
+          token,
+        );
+        setAttendanceRoster(rosterResult.students || []);
+        setAttendanceDraft(
+          Object.fromEntries(
+            (rosterResult.students || []).map((student) => [
+              student.id,
+              records.find((record) => record.student_id === student.id)?.status || "present",
+            ]),
+          ) as Record<string, AttendanceStatus>,
+        );
+      } else {
+        setAttendanceRoster([]);
+        setAttendanceDraft({});
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to load attendance.");
       setAttendanceRecords([]);
+      setAttendanceRoster([]);
     }
-  }, [attendanceDate, schoolId, selectedClassId, token]);
+  }, [activeMembership?.role, attendanceDate, schoolId, selectedClassId, token]);
 
   useEffect(() => {
     if (activeTab === "attendance") void loadAttendance();
   }, [activeTab, loadAttendance]);
+
+  async function saveAttendance() {
+    if (!schoolId || !token || !selectedClassId || attendanceRoster.length === 0) return;
+    setAttendanceSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      await apiRequest(
+        `/api/v1/schools/${schoolId}/classes/${selectedClassId}/attendance`,
+        token,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            attendance_date: attendanceDate,
+            records: attendanceRoster.map((student) => ({
+              student_id: student.id,
+              status: attendanceDraft[student.id] || "present",
+            })),
+          }),
+        },
+      );
+      setNotice("Attendance saved successfully.");
+      await loadAttendance();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save attendance.");
+    } finally {
+      setAttendanceSaving(false);
+    }
+  }
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -446,7 +506,7 @@ export default function DashboardPage() {
                 {activeTab === "attendance" && (
                   <section className="card">
                     <h2>Attendance</h2>
-                    <p className="muted">Review attendance recorded for a class and date.</p>
+                    <p className="muted">Review or record attendance for an enrolled class roster.</p>
                     <div className="row" style={{ flexWrap: "wrap", margin: "16px 0" }}>
                       <label className="field" style={{ minWidth: 220 }}>Class
                         <select value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)}>
@@ -458,21 +518,51 @@ export default function DashboardPage() {
                       </label>
                       <button className="btn secondary" onClick={() => void loadAttendance()}>Load attendance</button>
                     </div>
-                    {attendanceRecords.length === 0 ? <p className="muted">No attendance records found for this class and date.</p> : (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
-                          <thead><tr><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Status</th><th style={{ padding: 10 }}>Remarks</th></tr></thead>
-                          <tbody>{attendanceRecords.map((record) => {
-                            const student = students.find((item) => item.id === record.student_id);
-                            return <tr key={record.id} style={{ borderTop: "1px solid #e2eaed" }}>
-                              <td style={{ padding: 10 }}>{student ? `${student.first_name} ${student.last_name || ""}` : record.student_id}</td>
-                              <td style={{ padding: 10 }}>{student?.admission_no || "—"}</td>
-                              <td style={{ padding: 10, textTransform: "capitalize" }}>{record.status}</td>
-                              <td style={{ padding: 10 }}>{record.remarks || "—"}</td>
-                            </tr>;
-                          })}</tbody>
-                        </table>
-                      </div>
+                    {(activeMembership?.role === "admin" || activeMembership?.role === "teacher") && attendanceRoster.length > 0 && (
+                      <>
+                        <p className="muted">{attendanceRecords.length > 0 ? "Attendance has already been submitted for this date. Existing records are shown below." : "Set each student's status, then submit the class attendance."}</p>
+                        <div style={{ overflowX: "auto" }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                            <thead><tr><th style={{ padding: 10 }}>Roll no.</th><th style={{ padding: 10 }}>Student</th><th style={{ padding: 10 }}>Admission no.</th><th style={{ padding: 10 }}>Status</th></tr></thead>
+                            <tbody>{attendanceRoster.map((student) => {
+                              const existing = attendanceRecords.find((record) => record.student_id === student.id);
+                              return <tr key={student.id} style={{ borderTop: "1px solid #e2eaed" }}>
+                                <td style={{ padding: 10 }}>{student.roll_number ?? "—"}</td>
+                                <td style={{ padding: 10 }}>{student.first_name} {student.last_name || ""}</td>
+                                <td style={{ padding: 10 }}>{student.admission_no}</td>
+                                <td style={{ padding: 10 }}>
+                                  {existing ? <span style={{ textTransform: "capitalize" }}>{existing.status}</span> : (
+                                    <select
+                                      aria-label={`Attendance status for ${student.first_name}`}
+                                      value={attendanceDraft[student.id] || "present"}
+                                      onChange={(event) => setAttendanceDraft((previous) => ({ ...previous, [student.id]: event.target.value as AttendanceStatus }))}
+                                    >
+                                      <option value="present">Present</option>
+                                      <option value="absent">Absent</option>
+                                      <option value="late">Late</option>
+                                      <option value="excused">Excused</option>
+                                    </select>
+                                  )}
+                                </td>
+                              </tr>;
+                            })}</tbody>
+                          </table>
+                        </div>
+                        {attendanceRecords.length === 0 && (
+                          <button className="btn" onClick={() => void saveAttendance()} disabled={attendanceSaving}>
+                            {attendanceSaving ? "Saving…" : "Submit attendance"}
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {attendanceRecords.length > 0 && (
+                      <p className="muted">Submitted records: {attendanceRecords.length}</p>
+                    )}
+                    {attendanceRoster.length === 0 && attendanceRecords.length === 0 && (
+                      <p className="muted">No active students are enrolled in this class, or no roster is available for your role.</p>
+                    )}
+                    {activeMembership?.role === "parent" && attendanceRecords.length === 0 && (
+                      <p className="muted">No attendance records found for this class and date.</p>
                     )}
                   </section>
                 )}
