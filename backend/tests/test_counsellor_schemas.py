@@ -691,3 +691,40 @@ class CounsellorReferralInboxRoleTests(IsolatedAsyncioTestCase):
                 )
         self.assertEqual(raised.exception.status_code, 403)
         request.assert_not_awaited()
+
+
+class StudentVoiceAuthAccessTests(IsolatedAsyncioTestCase):
+    async def test_access_lookup_is_scoped_to_authenticated_user_and_active_links(self):
+        from unittest.mock import patch
+        import httpx
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1.auth import read_my_student_voice_access
+
+        captured = {}
+        class FakeClient:
+            async def __aenter__(self):
+                return self
+            async def __aexit__(self, *args):
+                return False
+            async def get(self, url, headers, params):
+                captured.update({"url": url, "headers": headers, "params": params})
+                return httpx.Response(200, json=[{"school_id": "school-1", "student_id": "student-1"}])
+
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="student-token")
+        with patch("app.api.v1.auth.httpx.AsyncClient", return_value=FakeClient()):
+            result = await read_my_student_voice_access(
+                current_user={"id": "auth-user-1"}, credentials=credentials
+            )
+
+        self.assertEqual(result["access"], [{"school_id": "school-1", "student_id": "student-1"}])
+        self.assertEqual(captured["params"]["student_user_id"], "eq.auth-user-1")
+        self.assertEqual(captured["params"]["status"], "eq.active")
+        self.assertEqual(captured["headers"]["Authorization"], "Bearer student-token")
+
+    async def test_access_lookup_requires_bearer_credentials(self):
+        from fastapi import HTTPException
+        from app.api.v1.auth import read_my_student_voice_access
+
+        with self.assertRaises(HTTPException) as raised:
+            await read_my_student_voice_access(current_user={"id": "auth-user-1"}, credentials=None)
+        self.assertEqual(raised.exception.status_code, 401)
