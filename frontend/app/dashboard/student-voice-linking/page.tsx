@@ -1,2 +1,5 @@
-export { default } from "@/app/admin/student-voice-linking/page";
+import { redirect } from "next/navigation";
 
+export default function PreviewRouteRedirect() {
+  redirect("/dashboard/student-voice-links");
+}
