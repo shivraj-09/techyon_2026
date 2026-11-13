@@ -186,6 +186,34 @@ class StudentVoiceLinkRevocationRouteTests(IsolatedAsyncioTestCase):
 
 
 
+    async def test_concurrent_revocation_returns_conflict(self):
+        from unittest.mock import AsyncMock, patch
+
+        import httpx
+        from fastapi import HTTPException
+        from fastapi.security import HTTPAuthorizationCredentials
+        from app.api.v1 import counsellor
+
+        link_id = UUID("00000000-0000-0000-0000-000000000010")
+        school_id = UUID("00000000-0000-0000-0000-000000000020")
+        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
+        lookup = httpx.Response(200, json=[{"id": str(link_id), "status": "active"}])
+        # A concurrent request revoked it after the initial read; the conditional PATCH returns no rows.
+        update = httpx.Response(200, json=[])
+
+        with patch.object(counsellor, "_request", new=AsyncMock(side_effect=[lookup, update])) as request:
+            with self.assertRaises(HTTPException) as raised:
+                await counsellor.revoke_student_voice_link(
+                    school_id=school_id,
+                    link_id=link_id,
+                    _admin={"role": "admin"},
+                    credentials=credentials,
+                )
+
+        self.assertEqual(raised.exception.status_code, 409)
+        self.assertEqual(request.await_count, 2)
+
+
 class StudentVoiceMigrationContractTests(TestCase):
     """Static SQL guardrails; these do not replace PostgreSQL/RLS integration tests."""
 
@@ -228,31 +256,3 @@ class StudentVoiceMigrationContractTests(TestCase):
         self.assertIn("old.status <> 'active' or new.status <> 'revoked'", sql)
         self.assertIn("only an active school admin may revoke", sql)
         self.assertIn("before update on public.student_voice_student_links", sql)
-
-
-    async def test_concurrent_revocation_returns_conflict(self):
-        from unittest.mock import AsyncMock, patch
-
-        import httpx
-        from fastapi import HTTPException
-        from fastapi.security import HTTPAuthorizationCredentials
-        from app.api.v1 import counsellor
-
-        link_id = UUID("00000000-0000-0000-0000-000000000010")
-        school_id = UUID("00000000-0000-0000-0000-000000000020")
-        credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials="test-token")
-        lookup = httpx.Response(200, json=[{"id": str(link_id), "status": "active"}])
-        # A concurrent request revoked it after the initial read; the conditional PATCH returns no rows.
-        update = httpx.Response(200, json=[])
-
-        with patch.object(counsellor, "_request", new=AsyncMock(side_effect=[lookup, update])) as request:
-            with self.assertRaises(HTTPException) as raised:
-                await counsellor.revoke_student_voice_link(
-                    school_id=school_id,
-                    link_id=link_id,
-                    _admin={"role": "admin"},
-                    credentials=credentials,
-                )
-
-        self.assertEqual(raised.exception.status_code, 409)
-        self.assertEqual(request.await_count, 2)
