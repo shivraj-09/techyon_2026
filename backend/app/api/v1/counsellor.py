@@ -839,58 +839,33 @@ async def review_student_voice_meeting_request(
 async def reveal_meeting_request_student_identity(
     school_id: UUID,
     request_id: UUID,
-    current_user: dict = Depends(get_current_user),
     _counsellor: dict = Depends(require_school_roles("counsellor")),
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
-    """Explicit reveal endpoint: identity is returned only after this meeting request is approved."""
-    request_rows = _rows(await _request(
-        "student_voice_meeting_requests", "GET", credentials,
-        params={
-            "select": "id,conversation_id,requested_by,status",
-            "id": f"eq.{request_id}",
-            "school_id": f"eq.{school_id}",
-            "status": "eq.approved",
-            "limit": "1",
-        },
-    ))
-    if not request_rows:
-        raise HTTPException(status_code=404, detail="Approved meeting request not found")
-    meeting = request_rows[0]
-    identity_rows = _rows(await _request(
-        "student_voice_student_links", "GET", credentials,
-        params={
-            "select": "student_id",
-            "school_id": f"eq.{school_id}",
-            "student_user_id": f"eq.{meeting['requested_by']}",
-            "status": "eq.active",
-            "limit": "1",
-        },
-    ))
-    if not identity_rows:
-        raise HTTPException(status_code=404, detail="Student identity is unavailable")
-    audit_response = await _request(
-        "student_voice_identity_reveal_audit", "POST", credentials,
-        params={"select": "id,revealed_at"},
+    """Reveal identity through an atomic database function that audits before returning it."""
+    response = await _request(
+        "rpc/reveal_student_voice_identity", "POST", credentials,
         payload={
-            "school_id": str(school_id),
-            "meeting_request_id": str(request_id),
-            "counsellor_user_id": current_user["id"],
-            "student_id": identity_rows[0]["student_id"],
+            "p_school_id": str(school_id),
+            "p_meeting_request_id": str(request_id),
         },
     )
-    if audit_response.status_code not in (200, 201):
-        raise HTTPException(status_code=503, detail="Identity reveal could not be audited; identity was not disclosed")
-    _rows(audit_response, allowed=(200, 201))
+    if response.status_code in (401, 403):
+        raise HTTPException(status_code=403, detail="Identity reveal is not permitted")
+    if response.status_code not in (200, 201):
+        raise HTTPException(status_code=502, detail="Could not complete audited identity reveal")
+    rows = _rows(response, allowed=(200, 201))
+    if not rows:
+        raise HTTPException(status_code=404, detail="Approved meeting request not found")
     return {
         "success": True,
         "identity": {
-            "student_id": identity_rows[0]["student_id"],
-            "meeting_request_id": str(request_id),
-            "conversation_id": meeting["conversation_id"],
+            "student_id": rows[0]["student_id"],
+            "meeting_request_id": rows[0]["meeting_request_id"],
+            "conversation_id": rows[0]["conversation_id"],
+            "revealed_at": rows[0]["revealed_at"],
         },
     }
-
 
 @student_voice_router.get("/meeting-requests/mine")
 async def list_my_student_voice_meeting_requests(
