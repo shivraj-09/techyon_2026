@@ -41,7 +41,7 @@
  * - GET   /api/v1/schools/{school_id}/student-voice/meeting-requests
  * - GET   /api/v1/schools/{school_id}/student-voice/meeting-requests/mine
  * - PATCH /api/v1/schools/{school_id}/student-voice/meeting-requests/{request_id}
- * - GET   /api/v1/schools/{school_id}/student-voice/meeting-requests/{request_id}/student-identity
+ * - POST  /api/v1/schools/{school_id}/student-voice/meeting-requests/{request_id}/student-identity
  * ============================================================================
  */
 
