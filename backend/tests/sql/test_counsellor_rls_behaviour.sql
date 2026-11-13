@@ -214,7 +214,20 @@ BEGIN
   EXCEPTION WHEN insufficient_privilege THEN
     NULL;
   END;
-END $$;
+  BEGIN
+    INSERT INTO public.student_voice_messages
+      (school_id, conversation_id, sender_kind, sender_user_id, body)
+    VALUES
+      ('10000000-0000-4000-8000-000000000001',
+       '70000000-0000-4000-8000-000000000002',
+       'counsellor',
+       auth.uid(),
+       'Counsellor-role message must be rejected for a dual-role account.');
+    RAISE EXCEPTION 'Dual-role account sent a Student Voice message as a counsellor';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END $;
 RESET ROLE;
 DELETE FROM public.school_memberships
 WHERE school_id = '10000000-0000-4000-8000-000000000001'
