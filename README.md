@@ -30,17 +30,26 @@ A collaborative repository for our 24-hour hackathon build.
    uvicorn app.main:app --reload
    ```
 
-### Counsellor and Student Voice
-- Admins invite counsellors from the Student Voice Access page.
-- Invitees confirm their email and accept the invitation at `/auth/accept-invite`.
-- Admins link an existing student record to an existing Supabase Auth user from Student Voice Access.
-- Linked students sign in using the Student role; counsellors use the Counsellor role.
-- The counsellor workspace is at `/counsellor/dashboard`; the student portal is at `/student-voice`.
+## Counsellor and Student Voice
 
-### Database safety
-The counsellor feature migrations are not yet applied to the hosted Supabase project. The canonical foundational schema has been recovered read-only from hosted migration history and is stored under backend/schema_snapshots/. The active migration filenames still need timestamp/order reconciliation before creating a runnable supabase/migrations chain. Do not apply feature migrations to the hosted project until that ordering is reviewed and a disposable local PostgreSQL/Supabase reset plus RLS tests pass.
+- School admins invite counsellors from the Student Voice Access page.
+- Invitees confirm their email and accept the invitation at `/auth/accept-invite`.
+- Admins link an existing student record to an existing Supabase Auth user at `/dashboard/student-voice-links`.
+- A linked student signs in with their existing Supabase Auth account. There is **no student school-membership role**; access is granted by the active student-to-account link.
+- Counsellors use an active `counsellor` school membership.
+- Teacher referral intake is at `/teacher/referrals`.
+- The API-connected counsellor workspace is at `/counsellor/dashboard`; the student portal is at `/student-voice`.
+
+The expanded counsellor/student route set from the frontend preview branch is not enabled as a production workflow until each screen is connected to the authenticated API. Mock data and mock identity maps must never be used for real student records.
+
+## Database verification and deployment safety
+
+- The 15 counsellor/Student Voice SQL migrations under `backend/migrations/20261114*.sql` are applied in order by GitHub Actions to a disposable PostgreSQL 17 service. The workflow checks schema/RLS assertions, multi-school behaviour, Student Voice access revocation, dual-role restrictions, and trigger permissions.
+- CI uses a synthetic baseline fixture. It is not a complete clone of hosted Supabase and does not replace authenticated end-to-end tests.
+- The hosted Supabase project was inspected read-only. Its foundational schema is present; counsellor and Student Voice tables have not been deployed.
+- No hosted migration has been applied by this feature branch. Do not run `supabase db push` or manually execute feature migrations against production until the migration ledger, live schema, environment configuration and rollback plan have been reviewed and explicitly approved.
 
 ## Branch workflow
-- `main` — stable, demo-ready version
+- `main` — stable production branch
 - `dev` — shared integration branch
 - Feature branches — scoped development and review before integration
