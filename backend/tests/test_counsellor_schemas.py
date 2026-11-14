@@ -802,6 +802,23 @@ class CanonicalSchemaSnapshotTests(TestCase):
             )
         self.assertIn("from public, anon, authenticated", migration)
 
+    def test_student_voice_rls_helpers_are_moved_out_of_public(self):
+        from pathlib import Path
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "migrations"
+            / "202611140018_hide_student_voice_rls_helpers.sql"
+        ).read_text().lower()
+        self.assertIn("create schema if not exists private", migration)
+        self.assertIn(
+            "alter function public.student_voice_counsellor_can_read_conversation(uuid, uuid) set schema private",
+            migration,
+        )
+        self.assertIn(
+            "create policy student_voice_identity_audit_deny_client",
+            migration,
+        )
+
 
 class ReferralListAuthorizationTests(IsolatedAsyncioTestCase):
     async def test_teacher_referral_list_is_scoped_to_submitter(self):
