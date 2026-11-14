@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 const PORTAL_CAPABILITIES: Array<{
   title: string;
@@ -44,7 +45,13 @@ const PORTAL_CAPABILITIES: Array<{
 
 export default function HomePage() {
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#F5F7FA", color: "#212529" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--es-bg-app)",
+        color: "var(--es-text-primary)",
+      }}
+    >
       <header className="es-public-header">
         <div
           style={{
@@ -55,6 +62,7 @@ export default function HomePage() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: "16px",
+            flexWrap: "wrap",
           }}
         >
           <Link
@@ -89,8 +97,14 @@ export default function HomePage() {
 
           <nav
             aria-label="Primary actions"
-            style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
           >
+            <ThemeSwitcher variant="compact" tone="on-navy" />
             <Link
               href="/student/voice"
               className="es-btn es-btn-sm"
@@ -109,7 +123,7 @@ export default function HomePage() {
               className="es-btn es-btn-sm"
               style={{
                 backgroundColor: "#4F9CF9",
-                color: "#FFFFFF",
+                color: "#061A33",
                 fontWeight: 600,
                 padding: "0 16px",
                 height: "36px",
@@ -125,10 +139,10 @@ export default function HomePage() {
         {/* Whitepace Deep Navy Hero Section */}
         <section
           style={{
-            backgroundColor: "#043873",
+            backgroundColor: "var(--es-hero-bg)",
             color: "#FFFFFF",
             padding: "64px 24px 72px",
-            borderBottom: "1px solid #012B5B",
+            borderBottom: "1px solid rgba(167, 206, 252, 0.16)",
           }}
         >
           <div
@@ -193,7 +207,7 @@ export default function HomePage() {
                   className="es-btn es-btn-lg"
                   style={{
                     backgroundColor: "#4F9CF9",
-                    color: "#FFFFFF",
+                    color: "#061A33",
                     fontWeight: 600,
                     padding: "0 22px",
                     height: "46px",
@@ -221,8 +235,8 @@ export default function HomePage() {
             {/* Clean Whitepace Structured Workspace Illustration Card */}
             <div
               style={{
-                backgroundColor: "#012B5B",
-                border: "1px solid rgba(167, 206, 252, 0.25)",
+                backgroundColor: "var(--es-hero-card-bg)",
+                border: "1px solid rgba(167, 206, 252, 0.24)",
                 borderRadius: "14px",
                 padding: "22px",
                 boxShadow: "0 24px 48px -12px rgba(1, 20, 44, 0.45)",
@@ -294,7 +308,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Clean White Role Capabilities Section */}
+        {/* Clean Role Capabilities Section */}
         <section style={{ maxWidth: "1200px", margin: "0 auto", padding: "56px 24px 72px" }}>
           <div style={{ maxWidth: "640px", marginBottom: "32px" }}>
             <h2
@@ -303,12 +317,19 @@ export default function HomePage() {
                 fontSize: "clamp(1.5rem, 2.5vw, 2.1rem)",
                 fontWeight: 700,
                 letterSpacing: "-0.02em",
-                color: "#043873",
+                color: "var(--es-brand-navy)",
               }}
             >
               Designed for every role in your institution
             </h2>
-            <p style={{ margin: 0, fontSize: "15.5px", lineHeight: 1.6, color: "#4F5660" }}>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "15.5px",
+                lineHeight: 1.6,
+                color: "var(--es-text-secondary)",
+              }}
+            >
               Select your portal to enter a tailored workspace with clear permissions and responsive workflows.
             </p>
           </div>
@@ -338,8 +359,9 @@ export default function HomePage() {
                       width: "42px",
                       height: "42px",
                       borderRadius: "10px",
-                      backgroundColor: "#EAF4FF",
-                      color: "#043873",
+                      backgroundColor: "var(--es-primary-subtle)",
+                      color: "var(--es-badge-primary-text)",
+                      border: "1px solid var(--es-primary-border)",
                       display: "inline-flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -353,7 +375,7 @@ export default function HomePage() {
                       margin: "0 0 8px",
                       fontSize: "17px",
                       fontWeight: 700,
-                      color: "#212529",
+                      color: "var(--es-text-primary)",
                     }}
                   >
                     {item.title}
@@ -363,7 +385,7 @@ export default function HomePage() {
                       margin: 0,
                       fontSize: "14px",
                       lineHeight: 1.6,
-                      color: "#4F5660",
+                      color: "var(--es-text-secondary)",
                     }}
                   >
                     {item.description}

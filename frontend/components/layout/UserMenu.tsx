@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/Icon";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { ROLE_NAVIGATION, type UserRole } from "@/config/navigation";
 
 export interface UserMenuProps {
@@ -93,6 +94,24 @@ export function UserMenu({
                 {roleConfig.roleLabel}
               </span>
             </div>
+          </div>
+
+          <div className="es-popover-divider" />
+
+          <div style={{ padding: "0.375rem 0.625rem 0.5rem" }}>
+            <div
+              style={{
+                fontSize: "0.6875rem",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                color: "var(--es-text-subtle)",
+                marginBottom: "0.375rem",
+              }}
+            >
+              Appearance
+            </div>
+            <ThemeSwitcher variant="menu" />
           </div>
 
           <div className="es-popover-divider" />

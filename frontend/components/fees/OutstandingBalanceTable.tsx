@@ -178,7 +178,7 @@ export function OutstandingBalanceTable({
                     key={row.studentId}
                     style={
                       isOverdue
-                        ? { backgroundColor: "rgba(254, 242, 242, 0.45)" }
+                        ? { backgroundColor: "var(--es-row-danger-tint)" }
                         : undefined
                     }
                   >

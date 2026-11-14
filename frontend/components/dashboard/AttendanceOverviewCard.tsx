@@ -163,8 +163,8 @@ export function AttendanceOverviewCard() {
                 x2="0"
                 y2="1"
               >
-                <stop offset="0%" stopColor="#0284c7" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#0284c7" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--es-chart-1)" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="var(--es-chart-1)" stopOpacity="0.0" />
               </linearGradient>
             </defs>
 
@@ -178,7 +178,7 @@ export function AttendanceOverviewCard() {
                     y1={y}
                     x2={width - padRight}
                     y2={y}
-                    stroke="#e2e8f0"
+                    stroke="var(--es-chart-grid)"
                     strokeDasharray="3 3"
                     strokeWidth="1"
                   />
@@ -187,7 +187,7 @@ export function AttendanceOverviewCard() {
                     y={y + 4}
                     textAnchor="end"
                     fontSize="11"
-                    fill="#64748b"
+                    fill="var(--es-chart-axis)"
                   >
                     {tick}%
                   </text>
@@ -202,7 +202,7 @@ export function AttendanceOverviewCard() {
             <path
               d={linePath}
               fill="none"
-              stroke="#0284c7"
+              stroke="var(--es-chart-1)"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -228,7 +228,7 @@ export function AttendanceOverviewCard() {
                       y1={padTop}
                       x2={cx}
                       y2={padTop + plotHeight}
-                      stroke="#bae6fd"
+                      stroke="var(--es-chart-guide)"
                       strokeWidth="1.5"
                     />
                   )}
@@ -241,8 +241,8 @@ export function AttendanceOverviewCard() {
                     cx={cx}
                     cy={cy}
                     r={isHovered ? 5.5 : 4}
-                    fill="#ffffff"
-                    stroke="#0284c7"
+                    fill="var(--es-chart-dot-fill)"
+                    stroke="var(--es-chart-1)"
                     strokeWidth={isHovered ? 3 : 2.2}
                   />
 
@@ -255,7 +255,7 @@ export function AttendanceOverviewCard() {
                         width={52}
                         height={20}
                         rx={4}
-                        fill="#0f172a"
+                        fill="var(--es-chart-tooltip-bg)"
                       />
                       <text
                         x={cx}
@@ -263,7 +263,7 @@ export function AttendanceOverviewCard() {
                         textAnchor="middle"
                         fontSize="11"
                         fontWeight="600"
-                        fill="#ffffff"
+                        fill="var(--es-chart-tooltip-fg)"
                       >
                         {pt.percentage}%
                       </text>
@@ -277,7 +277,11 @@ export function AttendanceOverviewCard() {
                     textAnchor="middle"
                     fontSize="11.5"
                     fontWeight={isHovered || i === points.length - 1 ? "600" : "500"}
-                    fill={isHovered || i === points.length - 1 ? "#0f172a" : "#64748b"}
+                    fill={
+                      isHovered || i === points.length - 1
+                        ? "var(--es-chart-axis-active)"
+                        : "var(--es-chart-axis)"
+                    }
                   >
                     {pt.day}
                   </text>

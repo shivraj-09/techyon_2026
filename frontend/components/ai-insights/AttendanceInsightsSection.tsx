@@ -182,7 +182,7 @@ export function AttendanceInsightsSection({
               <span className="es-legend-item">
                 <span
                   className="es-legend-swatch"
-                  style={{ backgroundColor: "#94a3b8" }}
+                  style={{ backgroundColor: "var(--es-chart-2-active)" }}
                 />
                 Previous
               </span>
@@ -253,7 +253,7 @@ export function AttendanceInsightsSection({
                 <path
                   d={prevPath}
                   fill="none"
-                  stroke="#94a3b8"
+                  stroke="var(--es-chart-2-active)"
                   strokeWidth="2"
                   strokeDasharray="4 4"
                 />

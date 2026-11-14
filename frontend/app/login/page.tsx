@@ -3,6 +3,7 @@
 import { FormEvent, MouseEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import "./login.css";
 
@@ -198,6 +199,7 @@ export default function LoginPage() {
           </svg>
           Home
         </Link>
+        <ThemeSwitcher variant="compact" />
       </nav>
 
       <main className="login-main">

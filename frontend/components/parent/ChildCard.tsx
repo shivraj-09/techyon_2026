@@ -227,7 +227,7 @@ export function ChildCard({
       <CardFooter
         style={{
           backgroundColor: selected
-            ? "rgba(255, 255, 255, 0.72)"
+            ? "var(--es-footer-selected-tint)"
             : "var(--es-bg-surface)",
         }}
       >

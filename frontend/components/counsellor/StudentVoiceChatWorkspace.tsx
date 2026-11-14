@@ -166,7 +166,9 @@ export function StudentVoiceChatWorkspace({
                       backgroundColor: isOwn
                         ? "var(--es-primary)"
                         : "var(--es-surface)",
-                      color: isOwn ? "#ffffff" : "var(--es-text-primary)",
+                      color: isOwn
+                        ? "var(--es-primary-foreground)"
+                        : "var(--es-text-primary)",
                       border: isOwn
                         ? "none"
                         : "1px solid var(--es-border-subtle)",
@@ -182,7 +184,9 @@ export function StudentVoiceChatWorkspace({
                         marginBottom: "0.375rem",
                         fontSize: "0.75rem",
                         opacity: isOwn ? 0.9 : 1,
-                        color: isOwn ? "#ffffff" : "var(--es-text-muted)",
+                        color: isOwn
+                          ? "var(--es-primary-foreground)"
+                          : "var(--es-text-muted)",
                       }}
                     >
                       <span style={{ fontWeight: 600 }}>

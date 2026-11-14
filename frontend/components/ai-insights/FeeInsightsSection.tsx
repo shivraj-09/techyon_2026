@@ -181,7 +181,7 @@ export function FeeInsightsSection({
               <span className="es-legend-item">
                 <span
                   className="es-legend-swatch"
-                  style={{ backgroundColor: "#f59e0b" }}
+                  style={{ backgroundColor: "var(--es-chart-4)" }}
                 />
                 Outstanding
               </span>
@@ -269,7 +269,7 @@ export function FeeInsightsSection({
                         style={{
                           width: "12px",
                           height: `${outstandingH}px`,
-                          backgroundColor: "#f59e0b",
+                          backgroundColor: "var(--es-chart-4)",
                           borderRadius: "4px 4px 0 0",
                         }}
                       />
@@ -372,7 +372,7 @@ export function FeeInsightsSection({
                           width: `${totalWidthPct}%`,
                           height: "100%",
                           borderRadius: "999px",
-                          backgroundColor: "#f59e0b",
+                          backgroundColor: "var(--es-chart-4)",
                           position: "relative",
                           overflow: "hidden",
                         }}

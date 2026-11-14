@@ -7,6 +7,7 @@ import { Breadcrumbs, type BreadcrumbItem } from "./Breadcrumbs";
 import { SearchBar } from "./SearchBar";
 import { NotificationButton } from "./NotificationButton";
 import { UserMenu } from "./UserMenu";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
 export interface AppHeaderProps {
   breadcrumbs?: BreadcrumbItem[];
@@ -58,6 +59,9 @@ export function AppHeader({
 
       <div className="es-header-right">
         <SearchBar />
+        <div className="es-header-theme-wrap">
+          <ThemeSwitcher variant="compact" />
+        </div>
         <NotificationButton notificationsHref={notificationsHref} />
         <UserMenu
           userName={userName}
