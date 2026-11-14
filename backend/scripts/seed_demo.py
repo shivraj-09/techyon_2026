@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import secrets
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -311,7 +311,7 @@ class DemoSeeder:
                     "body": "This is a sample school-wide announcement for the EduSync demo.",
                     "audience": "school",
                     "created_by": user_ids["admin"],
-                    "published_at": httpx.Timestamp.now().isoformat(),
+                    "published_at": datetime.now(timezone.utc).isoformat(),
                 },
                 prefer="return=minimal",
             )
