@@ -3,10 +3,11 @@
 import { FormEvent, MouseEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
 import "./login.css";
 
-type RoleId = "student" | "parent" | "teacher" | "admin";
+type RoleId = "student" | "parent" | "teacher" | "admin" | "counsellor";
 
 interface RoleOption {
   id: RoleId;
@@ -16,7 +17,12 @@ interface RoleOption {
 }
 
 const ROLES: RoleOption[] = [
-  
+  {
+    id: "student",
+    title: "Student",
+    subtitle: "Student Voice",
+    sampleEmail: "student@institution.in",
+  },
   {
     id: "parent",
     title: "Parent",
@@ -28,6 +34,12 @@ const ROLES: RoleOption[] = [
     title: "Teacher",
     subtitle: "Faculty",
     sampleEmail: "teacher@institution.in",
+  },
+  {
+    id: "counsellor",
+    title: "Counsellor",
+    subtitle: "Student Support",
+    sampleEmail: "counsellor@institution.in",
   },
   {
     id: "admin",
@@ -55,58 +67,86 @@ export default function LoginPage() {
 
   const activeRole = ROLES.find((r) => r.id === selectedRole);
 
-  // Connects to Supabase Auth login + FastAPI Backend verify/memberships endpoints
+  // [DISCONNECTED ENDPOINTS] Previously connected to:
+  // 1. Supabase Auth Sign In: POST /auth/v1/token?grant_type=password (via supabase.auth.signInWithPassword)
+  // 2. FastAPI Verify User:    GET /api/v1/auth/me
+  // 3. FastAPI Memberships:    GET /api/v1/auth/memberships
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSuccess("");
     setBusy(true);
-
     try {
+      if (!selectedRole) {
+        throw new Error("Choose a role to continue.");
+      }
       const supabase = createClient();
       const cleanInput = email.trim();
       const credentials = cleanInput.includes("@")
         ? { email: cleanInput, password }
         : { phone: cleanInput, password };
-
-      // 1. Supabase Auth Sign In Endpoint (POST /auth/v1/token?grant_type=password)
       const { data: authData, error: signInError } =
-        await supabase.auth.signInWithPassword(credentials as any);
-
+        await supabase.auth.signInWithPassword(credentials);
       if (signInError) throw signInError;
+      const accessToken = authData.session?.access_token;
+      if (!accessToken) throw new Error("Sign-in did not return an access token.");
 
-      // 2. FastAPI Backend Verification Endpoint (/api/v1/auth/me & /api/v1/auth/memberships)
-      if (authData?.session?.access_token) {
-        const api =
-          process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
-
-        try {
-          // Verify token identity with FastAPI backend
-          await fetch(`${api}/api/v1/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          // Fetch active school memberships
-          const membershipRes = await fetch(`${api}/api/v1/auth/memberships`, {
-            headers: {
-              Authorization: `Bearer ${authData.session.access_token}`,
-            },
-          });
-
-          if (membershipRes.ok) {
-            const membershipData = await membershipRes.json();
-            // Memberships verified and loaded
-            console.log("Verified memberships:", membershipData.memberships);
-          }
-        } catch (backendError) {
-          // If the backend server isn't running yet, user can still proceed into app
-          console.warn("Backend auth verification warning:", backendError);
+      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000";
+      const api = apiBase.endsWith("/") ? apiBase.slice(0, -1) : apiBase;
+      if (selectedRole === "student") {
+        const accessResponse = await fetch(`${api}/api/v1/auth/student-voice-access`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: "no-store",
+        });
+        if (!accessResponse.ok) throw new Error("Could not verify Student Voice access.");
+        const accessData = await accessResponse.json();
+        const link = Array.isArray(accessData.access) ? accessData.access[0] : null;
+        if (!link?.school_id) {
+          await supabase.auth.signOut();
+          throw new Error("This account is not linked to Student Voice. Ask your school administrator to enable access.");
         }
+        sessionStorage.setItem("edusync_demo_email", authData.user.email || cleanInput);
+        sessionStorage.setItem("edusync_demo_role", "student");
+        sessionStorage.setItem("edusync_active_school_id", link.school_id);
+        router.replace("/student-voice");
+        router.refresh();
+        return;
       }
 
-      router.replace("/dashboard");
+      const membershipResponse = await fetch(`${api}/api/v1/auth/memberships`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: "no-store",
+      });
+      if (!membershipResponse.ok) {
+        throw new Error(membershipResponse.status === 401
+          ? "Your session could not be verified. Please sign in again."
+          : "Could not verify your school access. Please try again.");
+      }
+      const membershipData = await membershipResponse.json();
+      if (membershipData?.success !== true || !Array.isArray(membershipData.memberships)) {
+        throw new Error("The school access service returned an invalid response.");
+      }
+      const membership = membershipData.memberships.find(
+        (item: { role: string; status: string; school_id: string }) =>
+          item.role === selectedRole && item.status === "active" && item.school_id,
+      );
+      if (!membership) {
+        await supabase.auth.signOut();
+        throw new Error(`This account does not have an active ${selectedRole} membership. Select the role assigned by your school.`);
+      }
+
+      const userEmail = authData.user.email || cleanInput;
+      sessionStorage.setItem("edusync_demo_email", userEmail);
+      sessionStorage.setItem("edusync_demo_role", selectedRole);
+      sessionStorage.setItem("edusync_active_school_id", membership.school_id);
+      const destination = selectedRole === "counsellor"
+        ? "/counsellor/dashboard"
+        : selectedRole === "teacher"
+          ? "/teacher/dashboard"
+          : selectedRole === "parent"
+            ? "/parent/dashboard"
+            : "/dashboard";
+      router.replace(destination);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to sign in.");
@@ -115,41 +155,26 @@ export default function LoginPage() {
     }
   }
 
-  // Connects to Supabase Password Reset Endpoint (POST /auth/v1/recover)
   async function handleForgotPassword(e: MouseEvent<HTMLAnchorElement>) {
     e.preventDefault();
     const cleanEmail = email.trim();
-
     if (!cleanEmail || !cleanEmail.includes("@")) {
-      setError(
-        "Please enter your registered email address in the field above to reset your password.",
-      );
+      setError("Enter your registered email address to reset your password.");
       setSuccess("");
       return;
     }
-
     setError("");
     setSuccess("");
     setBusy(true);
-
     try {
       const supabase = createClient();
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(
-        cleanEmail,
-        {
-          redirectTo: `${window.location.origin}/login`,
-        },
-      );
-
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
       if (resetError) throw resetError;
-
-      setSuccess(
-        `Password reset instructions have been sent to ${cleanEmail}. Please check your inbox.`,
-      );
+      setSuccess("Password reset instructions have been sent if the account exists.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Unable to request password reset.",
-      );
+      setError(err instanceof Error ? err.message : "Unable to request password reset.");
     } finally {
       setBusy(false);
     }
@@ -174,6 +199,7 @@ export default function LoginPage() {
           </svg>
           Home
         </Link>
+        <ThemeSwitcher variant="compact" />
       </nav>
 
       <main className="login-main">
@@ -373,6 +399,7 @@ export default function LoginPage() {
                     className="login-input"
                     autoComplete="current-password"
                     placeholder="••••••••••••"
+                    // [DISCONNECTED FOR UI PREVIEW] Removed `required` so you can click Sign In directly without entering a password
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}

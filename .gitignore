@@ -1,5 +1,6 @@
 # Secrets
 .env
+.env.local
 .env.*
 !.env.example
 
@@ -36,3 +37,6 @@ data/
 Thumbs.db
 .vscode/
 .idea/
+
+frontend/tsconfig.tsbuildinfo
+*.tsbuildinfo
