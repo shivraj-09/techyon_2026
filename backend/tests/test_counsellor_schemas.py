@@ -814,9 +814,14 @@ class CanonicalSchemaSnapshotTests(TestCase):
             "alter function public.student_voice_counsellor_can_read_conversation(uuid, uuid) set schema private",
             migration,
         )
+        cleanup = (
+            Path(__file__).resolve().parents[1]
+            / "migrations"
+            / "202611140019_keep_identity_audit_policyless.sql"
+        ).read_text().lower()
         self.assertIn(
-            "create policy student_voice_identity_audit_deny_client",
-            migration,
+            "drop policy if exists student_voice_identity_audit_deny_client",
+            cleanup,
         )
 
 
