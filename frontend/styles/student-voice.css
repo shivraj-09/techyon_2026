@@ -1,0 +1,304 @@
+/* ==========================================================================
+   CIRCLE · Student Voice
+   Scoped presentation only. No application behaviour is changed.
+   ========================================================================== */
+
+.es-student-voice-page {
+  --circle-voice-accent: #21866a;
+  --circle-voice-accent-soft: rgba(33, 134, 106, 0.09);
+  color: var(--es-text-primary);
+  font-family: var(--es-font-sans);
+}
+
+.es-student-voice-page > div {
+  width: min(100%, 1120px);
+  gap: 20px;
+}
+
+.es-student-voice-page > div > header.es-card {
+  position: relative;
+  padding: 22px 24px;
+  border: 1px solid var(--es-border);
+  border-radius: 17px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--circle-voice-accent-soft), transparent 46%),
+    var(--es-bg-surface);
+  box-shadow: var(--es-shadow-sm);
+}
+
+.es-student-voice-page > div > header .es-brand-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--es-text-primary);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
+.es-student-voice-page > div > header .es-brand-title::before {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--circle-voice-accent);
+  box-shadow: 0 0 0 5px var(--circle-voice-accent-soft);
+  content: "";
+}
+
+.es-student-voice-page > div > header p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.es-student-voice-page > div > header .es-btn {
+  min-height: 36px;
+  padding-inline: 14px;
+  border-radius: 9px;
+}
+
+.es-student-voice-page > div > .es-card:nth-of-type(2) {
+  padding: 17px 20px;
+  border: 1px solid var(--es-info-border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.es-student-voice-page > div > .es-card:nth-of-type(2) > strong {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--es-text-primary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.es-student-voice-page > div > .es-card:nth-of-type(2) > p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+.es-student-voice-page > div > .es-card[role="alert"],
+.es-student-voice-page > div > .es-card[role="status"] {
+  padding: 13px 16px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.es-student-voice-page > div > .es-card[role="alert"] {
+  border: 1px solid var(--es-danger-border);
+  background: var(--es-danger-bg);
+  color: var(--es-danger-text) !important;
+}
+
+.es-student-voice-page > div > .es-card[role="status"] {
+  border: 1px solid var(--es-success-border);
+  background: var(--es-success-bg);
+  color: var(--es-success-text);
+}
+
+.es-student-voice-page .es-dashboard-grid-main {
+  grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+  align-items: start;
+  gap: 18px;
+}
+
+.es-student-voice-page .es-dashboard-grid-main > section.es-card {
+  min-width: 0;
+  min-height: 100%;
+  padding: 22px;
+  border: 1px solid var(--es-border);
+  border-radius: 16px;
+  background: var(--es-bg-surface);
+  box-shadow: var(--es-shadow-sm);
+}
+
+.es-student-voice-page .es-dashboard-grid-main > section.es-card > h2 {
+  margin: 0 0 16px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--es-border-subtle);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.es-student-voice-page .es-dashboard-grid-main > section.es-card > h3 {
+  margin: 23px 0 10px;
+  font-size: 13.5px;
+  font-weight: 750;
+}
+
+.es-student-voice-page .es-dashboard-grid-main > section.es-card > p {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.es-student-voice-page .es-dashboard-grid-main > section.es-card > button.es-btn {
+  min-height: 40px;
+  margin-bottom: 8px;
+  padding-inline: 16px;
+  border-radius: 10px;
+}
+
+.es-student-voice-page .es-list-row {
+  align-items: center;
+  min-height: 60px;
+  margin-top: 9px;
+  padding: 13px 14px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: 11px;
+  background: var(--es-bg-app);
+  box-shadow: none;
+}
+
+.es-student-voice-page button.es-list-row:hover {
+  border-color: var(--es-success-border);
+  background: var(--circle-voice-accent-soft);
+}
+
+.es-student-voice-page .es-list-row strong {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.es-student-voice-page .es-list-row span {
+  font-size: 11.5px;
+  text-align: right;
+}
+
+.es-student-voice-page .es-message-list {
+  min-height: 220px;
+  max-height: min(54vh, 520px);
+  gap: 11px;
+  margin: 0 0 18px;
+  padding: 17px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: 13px;
+  background:
+    linear-gradient(180deg, var(--circle-voice-accent-soft), transparent 38%),
+    var(--es-bg-app);
+}
+
+.es-student-voice-page .es-message-list p {
+  max-width: min(90%, 620px);
+  padding: 11px 13px;
+  border: 1px solid var(--es-border);
+  border-radius: 12px;
+  background: var(--es-bg-surface);
+  box-shadow: var(--es-shadow-xs);
+  color: var(--es-text-secondary);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.es-student-voice-page .es-message-list p strong {
+  color: var(--circle-voice-accent);
+  font-weight: 750;
+}
+
+.es-student-voice-page .es-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 13px;
+  margin-top: 15px;
+  padding: 17px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: 13px;
+  background: var(--es-bg-app);
+}
+
+.es-student-voice-page .es-form-grid h3 {
+  margin: 0;
+  color: var(--es-text-primary);
+  font-size: 13.5px;
+}
+
+.es-student-voice-page .es-form-grid label {
+  gap: 7px;
+  color: var(--es-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.es-student-voice-page .es-form-grid textarea {
+  min-height: 92px;
+  padding: 11px 12px;
+  border-radius: 9px;
+  background: var(--es-bg-surface);
+  line-height: 1.6;
+}
+
+.es-student-voice-page .es-form-grid textarea::placeholder {
+  color: var(--es-text-subtle);
+}
+
+.es-student-voice-page .es-form-grid > button {
+  justify-self: start;
+  min-height: 39px;
+  padding-inline: 15px;
+  border-radius: 9px;
+}
+
+@media (max-width: 900px) {
+  .es-student-voice-page .es-dashboard-grid-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .es-student-voice-page .es-dashboard-grid-main > section.es-card {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .es-student-voice-page {
+    padding: 14px !important;
+  }
+
+  .es-student-voice-page > div {
+    gap: 14px;
+  }
+
+  .es-student-voice-page > div > header.es-card {
+    align-items: flex-start !important;
+    flex-direction: column;
+    padding: 18px;
+  }
+
+  .es-student-voice-page > div > header .es-btn {
+    align-self: flex-start;
+  }
+
+  .es-student-voice-page > div > .es-card:nth-of-type(2) {
+    padding: 15px;
+  }
+
+  .es-student-voice-page .es-dashboard-grid-main > section.es-card {
+    padding: 17px 15px;
+  }
+
+  .es-student-voice-page .es-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .es-student-voice-page .es-list-row span {
+    text-align: left;
+  }
+
+  .es-student-voice-page .es-message-list p {
+    max-width: 100%;
+  }
+
+  .es-student-voice-page .es-form-grid {
+    padding: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .es-student-voice-page .es-list-row,
+  .es-student-voice-page .es-btn {
+    transition: none;
+  }
+}
