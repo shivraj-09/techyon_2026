@@ -5,8 +5,8 @@ import "./globals.css";
 import "../styles/design-system.css";
 
 export const metadata: Metadata = {
-  title: "EduSync | School Operating System",
-  description: "One institution. One connected ecosystem.",
+  title: "Circle | School Operating System",
+  description: "Circle brings school operations, communication, and student care into one connected workspace.",
 };
 
 export default function RootLayout({

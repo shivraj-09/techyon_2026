@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -81,7 +82,7 @@ export default function AcceptInvitePage() {
 
   return (
     <main>
-      <header className="topbar"><div className="brand"><span className="mark">E</span>EduSync</div></header>
+      <header className="topbar"><div className="brand"><span className="mark"><Image src="/circle-logo.svg" alt="" width={28} height={28} className="circle-auth-brand-logo" priority /></span>Circle</div></header>
       <div className="auth card">
         <span className="pill">SCHOOL INVITATION</span>
         <h1>You’re almost in</h1>

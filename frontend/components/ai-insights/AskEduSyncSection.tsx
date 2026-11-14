@@ -113,7 +113,7 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
   }
 
   return (
-    <section aria-labelledby="ask-edusync-heading">
+    <section aria-labelledby="ask-circle-heading">
       <Card>
         <CardHeader>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -134,7 +134,7 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
               <Icon name="sparkles" size={16} />
             </span>
             <div>
-              <CardTitle id="ask-edusync-heading">Ask EduSync</CardTitle>
+              <CardTitle id="ask-circle-heading">Ask Circle</CardTitle>
               <CardDescription>
                 Ask questions about your school&apos;s attendance, fees and
                 overall performance.
@@ -317,7 +317,7 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
                         color: "var(--es-text-subtle)",
                       }}
                     >
-                      {isUser ? "You" : "EduSync Summary"} · {msg.timestamp}
+                      {isUser ? "You" : "Circle Summary"} · {msg.timestamp}
                     </span>
                   </div>
                 );
@@ -357,7 +357,7 @@ export function AskEduSyncSection({ activeRange }: AskEduSyncSectionProps) {
           >
             <div style={{ flex: 1, minWidth: "240px" }}>
               <Input
-                aria-label="Ask EduSync a question about school metrics"
+                aria-label="Ask Circle a question about school metrics"
                 placeholder="Ask about attendance trends, lowest classes, or outstanding fees..."
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}

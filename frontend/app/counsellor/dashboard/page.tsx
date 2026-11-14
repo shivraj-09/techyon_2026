@@ -285,7 +285,7 @@ export default function CounsellorDashboardPage() {
 
   return (
     <AppLayout defaultRole="counsellor">
-      <div className="es-stack">
+      <div className="es-stack es-counsellor-workspace">
         <PageHeader title="Counsellor Workspace" subtitle="Confidential student support, referrals, sessions and Student Voice." />
         {error && <div className="es-card" role="alert" style={{ borderColor: "#dc6b6b", color: "#a52b2b" }}>{error}</div>}
         {notice && <div className="es-card" role="status">{notice}</div>}
