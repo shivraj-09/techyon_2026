@@ -1,5 +1,5 @@
 /* ==========================================================================
-   EduSync Design System
+   CIRCLE Design System
    Grounded in Whitepace Visual Identity & SaaS Ergonomics
    ========================================================================== */
 
@@ -2827,4 +2827,287 @@
 .es-app-shell textarea:focus-visible {
   outline: 2px solid var(--es-primary);
   outline-offset: 2px;
+}
+
+
+/* ==========================================================================
+   CIRCLE workspace refinements
+   These helpers complete the counsellor and Student Voice page styling.
+   Legacy --es-* tokens remain as internal compatibility names.
+   ========================================================================== */
+
+.es-brand-logo-image {
+  display: block;
+  object-fit: contain;
+}
+
+.es-brand-mark .es-brand-logo-image,
+.es-public-logo-mark .es-brand-logo-image,
+.circle-auth-brand-logo {
+  filter: brightness(0) invert(1);
+}
+
+.es-brand-mark .es-brand-logo-image {
+  width: 28px;
+  height: 28px;
+}
+
+.es-public-logo-mark .es-brand-logo-image {
+  width: 30px;
+  height: 30px;
+}
+
+.circle-auth-brand-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.es-muted {
+  color: var(--es-text-muted);
+}
+
+.es-stat-label {
+  color: var(--es-text-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.es-counsellor-workspace > .es-card,
+.es-student-voice-page .es-card {
+  padding: 20px 22px;
+}
+
+.es-counsellor-workspace > .es-card > h2,
+.es-student-voice-page .es-card h2 {
+  margin: 0 0 10px;
+  color: var(--es-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+.es-counsellor-workspace > .es-card > p,
+.es-student-voice-page .es-card > p {
+  margin: 6px 0 16px;
+  color: var(--es-text-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.es-counsellor-workspace .es-card h3,
+.es-student-voice-page .es-card h3 {
+  margin: 18px 0 10px;
+  color: var(--es-text-primary);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.es-student-voice-page .es-brand-title {
+  color: var(--es-text-primary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.es-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 13px 14px;
+  border: 1px solid var(--es-border);
+  border-radius: var(--es-radius-md);
+  background: var(--es-bg-surface);
+  color: var(--es-text-primary);
+  font: inherit;
+  text-align: left;
+  line-height: 1.5;
+  box-shadow: var(--es-shadow-xs);
+  transition: border-color var(--es-transition-fast), background-color var(--es-transition-fast), box-shadow var(--es-transition-fast);
+}
+
+button.es-list-row {
+  cursor: pointer;
+}
+
+button.es-list-row:hover,
+.es-list-row:hover {
+  border-color: var(--es-primary-border);
+  background: var(--es-bg-hover);
+  box-shadow: var(--es-shadow-sm);
+}
+
+.es-list-row:focus-visible {
+  outline: 2px solid var(--es-ring);
+  outline-offset: 2px;
+}
+
+.es-list-row > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.es-list-row strong {
+  color: var(--es-text-primary);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.es-list-row p {
+  margin: 5px 0;
+  color: var(--es-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.es-list-row small,
+.es-list-row span {
+  color: var(--es-text-muted);
+  font-size: 11.5px;
+}
+
+.es-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.es-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: var(--es-radius-lg);
+  background: var(--es-bg-subtle);
+}
+
+.es-form-grid h3 {
+  grid-column: 1 / -1;
+  margin: 0 0 2px !important;
+}
+
+.es-form-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--es-text-secondary);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.es-form-grid input,
+.es-form-grid select,
+.es-form-grid textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid var(--es-border);
+  border-radius: var(--es-radius-sm);
+  background: var(--es-bg-surface);
+  color: var(--es-text-primary);
+  font: 400 13.5px/1.45 var(--es-font-sans);
+  box-shadow: var(--es-shadow-xs);
+  transition: border-color var(--es-transition-fast), box-shadow var(--es-transition-fast);
+}
+
+.es-form-grid textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.es-form-grid input:hover,
+.es-form-grid select:hover,
+.es-form-grid textarea:hover {
+  border-color: var(--es-border-strong);
+}
+
+.es-form-grid input:focus,
+.es-form-grid select:focus,
+.es-form-grid textarea:focus {
+  outline: none;
+  border-color: var(--es-primary);
+  box-shadow: var(--es-shadow-focus);
+}
+
+.es-form-grid input::placeholder,
+.es-form-grid textarea::placeholder {
+  color: var(--es-text-subtle);
+}
+
+.es-form-grid > button {
+  justify-self: start;
+}
+
+.es-message-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  min-height: 72px;
+  overflow-y: auto;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: var(--es-radius-md);
+  background: var(--es-bg-subtle);
+}
+
+.es-message-list p {
+  max-width: min(88%, 680px);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--es-border);
+  border-radius: 10px;
+  background: var(--es-bg-surface);
+  color: var(--es-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.es-message-list p strong {
+  color: var(--es-text-primary);
+}
+
+.es-student-voice-page .es-dashboard-grid-main {
+  align-items: start;
+}
+
+@media (max-width: 640px) {
+  .es-counsellor-workspace > .es-card,
+  .es-student-voice-page .es-card {
+    padding: 16px;
+  }
+
+  .es-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .es-form-grid h3 {
+    grid-column: auto;
+  }
+
+  .es-list-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .es-row-actions {
+    justify-content: flex-start;
+    width: 100%;
+  }
 }

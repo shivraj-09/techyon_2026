@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/components/ui/Icon";
@@ -82,10 +83,10 @@ export function AppSidebar({
             onClick={onCloseMobile}
           >
             <span className="es-brand-mark">
-              <Icon name="brand-hub" size={18} />
+              <Image src="/circle-logo.svg" alt="" width={28} height={28} className="es-brand-logo-image" priority />
             </span>
             <span className="es-brand-text">
-              <span className="es-brand-title">EduSync</span>
+              <span className="es-brand-title">CIRCLE</span>
               <span className="es-brand-subtitle">School OS</span>
             </span>
           </Link>

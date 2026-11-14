@@ -154,10 +154,10 @@ export default function StudentVoicePage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--es-bg-app)", padding: "24px" }}>
+    <main className="es-student-voice-page" style={{ minHeight: "100vh", background: "var(--es-bg-app)", padding: "24px" }}>
       <div style={{ maxWidth: 1080, margin: "0 auto", display: "grid", gap: 18 }}>
         <header className="es-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div><div className="es-brand-title">EduSync · Student Voice</div><p className="es-muted">A private, pseudonymous way to contact your school counsellor.</p></div>
+          <div><div className="es-brand-title">CIRCLE · Student Voice</div><p className="es-muted">A private, pseudonymous way to contact your school counsellor.</p></div>
           <button type="button" className="es-btn es-btn-secondary es-btn-sm" onClick={() => void signOut()}>Sign out</button>
         </header>
         <div className="es-card" style={{ borderColor: "var(--es-info-border)", background: "var(--es-info-bg)" }}>

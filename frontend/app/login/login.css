@@ -383,3 +383,12 @@
     width: 100%;
   }
 }
+
+
+.login-brand-logo {
+  display: block;
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}

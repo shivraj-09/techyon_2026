@@ -2,6 +2,7 @@
 
 import { FormEvent, MouseEvent, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 import { createClient } from "@/lib/supabase/client";
@@ -207,30 +208,9 @@ export default function LoginPage() {
           {/* Header & Logo */}
           <header className="login-header">
             <div className="login-logo-badge">
-              <svg
-                width="30"
-                height="30"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <circle cx="12" cy="12" r="3" />
-                <circle cx="19" cy="5" r="2" />
-                <circle cx="5" cy="5" r="2" />
-                <circle cx="5" cy="19" r="2" />
-                <circle cx="19" cy="19" r="2" />
-                <line x1="12" y1="9" x2="12" y2="3" />
-                <circle cx="12" cy="3" r="1" fill="currentColor" />
-                <path d="m14 10 3.5-3.5" />
-                <path d="m10 10-3.5-3.5" />
-                <path d="m10 14-3.5 3.5" />
-                <path d="m14 14 3.5 3.5" />
-              </svg>
+              <Image src="/circle-logo.svg" alt="" width={46} height={46} className="login-brand-logo" priority />
             </div>
-            <h1 className="login-title">EduSync</h1>
+            <h1 className="login-title">CIRCLE</h1>
             <p className="login-subtitle">
               One institution. One connected ecosystem.
             </p>
@@ -511,7 +491,7 @@ export default function LoginPage() {
                   "Signing in…"
                 ) : (
                   <>
-                    Sign In to EduSync
+                    Sign In to CIRCLE
                     <svg
                       width="16"
                       height="16"

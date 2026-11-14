@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { THEME_INIT_SCRIPT, readStoredTheme, resolveTheme } from "@/lib/theme";
 
 export default function GlobalError({
@@ -72,7 +73,10 @@ export default function GlobalError({
               justifyContent: "space-between",
             }}
           >
-            <span style={{ fontWeight: 700, fontSize: "15px" }}>EduSync</span>
+            <span style={{ fontWeight: 700, fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "9px" }}>
+              <Image src="/circle-logo.svg" alt="" width={30} height={30} style={{ filter: "brightness(0) invert(1)" }} priority />
+              CIRCLE
+            </span>
             <span
               style={{
                 fontSize: "12px",
@@ -103,7 +107,7 @@ export default function GlobalError({
                 color: textMuted,
               }}
             >
-              We encountered an unexpected error while loading EduSync. You can
+              We encountered an unexpected error while loading CIRCLE. You can
               try reloading this view or return to the login page.
             </p>
 

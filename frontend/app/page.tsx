@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
 
@@ -79,20 +80,20 @@ export default function HomePage() {
             }}
           >
             <span
+              className="es-public-logo-mark"
               style={{
                 width: "34px",
                 height: "34px",
                 borderRadius: "8px",
                 backgroundColor: "#4F9CF9",
-                color: "#FFFFFF",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <Icon name="brand-hub" size={18} />
+              <Image src="/circle-logo.svg" alt="" width={30} height={30} className="es-brand-logo-image" priority />
             </span>
-            <span>EduSync</span>
+            <span>CIRCLE</span>
           </Link>
 
           <nav
@@ -196,7 +197,7 @@ export default function HomePage() {
                   maxWidth: "560px",
                 }}
               >
-                EduSync brings academics, attendance, fee collections, family
+                CIRCLE brings academics, attendance, fee collections, family
                 communication, and confidential counselling together with
                 role-based workspaces built for daily clarity.
               </p>
