@@ -137,13 +137,13 @@ SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000003', false);
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM public.student_voice_conversations) <> 2 THEN
+  IF (SELECT count(id) FROM public.student_voice_conversations) <> 2 THEN
     RAISE EXCEPTION 'Counsellor A must see exactly their assigned and unassigned conversations';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_messages) <> 2 THEN
+  IF (SELECT count(id) FROM public.student_voice_messages) <> 2 THEN
     RAISE EXCEPTION 'Counsellor A must see messages only for their assigned and unassigned conversations';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_meeting_requests) <> 1 THEN
+  IF (SELECT count(id) FROM public.student_voice_meeting_requests) <> 1 THEN
     RAISE EXCEPTION 'Counsellor A must see meeting requests only for their assigned and unassigned conversations';
   END IF;
 END $$;
@@ -154,13 +154,13 @@ SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000005', false);
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM public.student_voice_conversations) <> 2 THEN
+  IF (SELECT count(id) FROM public.student_voice_conversations) <> 2 THEN
     RAISE EXCEPTION 'Student One must see only their two conversations';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_messages) <> 2 THEN
+  IF (SELECT count(id) FROM public.student_voice_messages) <> 2 THEN
     RAISE EXCEPTION 'Student One must see only their own messages';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_meeting_requests) <> 1 THEN
+  IF (SELECT count(id) FROM public.student_voice_meeting_requests) <> 1 THEN
     RAISE EXCEPTION 'Student One must see only their own meeting request';
   END IF;
 END $$;
@@ -176,13 +176,13 @@ SET ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000005', false);
 DO $$
 BEGIN
-  IF (SELECT count(*) FROM public.student_voice_conversations) <> 0 THEN
+  IF (SELECT count(id) FROM public.student_voice_conversations) <> 0 THEN
     RAISE EXCEPTION 'Revoked student must no longer read Student Voice conversations';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_messages) <> 0 THEN
+  IF (SELECT count(id) FROM public.student_voice_messages) <> 0 THEN
     RAISE EXCEPTION 'Revoked student must no longer read Student Voice messages';
   END IF;
-  IF (SELECT count(*) FROM public.student_voice_meeting_requests) <> 0 THEN
+  IF (SELECT count(id) FROM public.student_voice_meeting_requests) <> 0 THEN
     RAISE EXCEPTION 'Revoked student must no longer read Student Voice meeting requests';
   END IF;
 END $$;
