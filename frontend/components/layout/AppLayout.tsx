@@ -6,6 +6,7 @@ import { ROLE_NAVIGATION, type UserRole } from "@/config/navigation";
 import { AppSidebar } from "./AppSidebar";
 import { AppHeader } from "./AppHeader";
 import type { BreadcrumbItem } from "./Breadcrumbs";
+import { createClient } from "@/lib/supabase/client";
 
 export interface AppLayoutProps {
   children: React.ReactNode;
@@ -24,23 +25,18 @@ export function AppLayout({
     defaultRole === "teacher" || pathname.startsWith("/teacher");
   const isParentRoute =
     defaultRole === "parent" || pathname.startsWith("/parent");
-  const isCounsellorRoute =
-    defaultRole === "counsellor" || pathname.startsWith("/counsellor");
-  const isStudentRoute =
-    defaultRole === "student" || pathname.startsWith("/student");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isCounsellorRoute = pathname.startsWith("/counsellor");
   const [role, setRole] = useState<UserRole>(
-    isCounsellorRoute
-      ? "counsellor"
-      : isStudentRoute
-        ? "student"
-        : isParentRoute
-          ? "parent"
-          : isTeacherRoute
-            ? "teacher"
-            : isAdminRoute
-              ? "admin"
-              : defaultRole,
+    isParentRoute
+      ? "parent"
+      : isTeacherRoute
+        ? "teacher"
+        : isCounsellorRoute
+          ? "counsellor"
+          : isAdminRoute
+            ? "admin"
+            : defaultRole,
   );
   const [customEmail, setCustomEmail] = useState<string>("");
   const [collapsed, setCollapsed] = useState(false);
@@ -52,26 +48,6 @@ export function AppLayout({
       "edusync_demo_role",
     ) as UserRole | null;
     const savedEmail = sessionStorage.getItem("edusync_demo_email");
-
-    if (isCounsellorRoute) {
-      setRole("counsellor");
-      setCustomEmail(
-        savedRole === "counsellor" && savedEmail
-          ? savedEmail
-          : ROLE_NAVIGATION.counsellor.defaultUserEmail,
-      );
-      return;
-    }
-
-    if (isStudentRoute) {
-      setRole("student");
-      setCustomEmail(
-        savedRole === "student" && savedEmail
-          ? savedEmail
-          : ROLE_NAVIGATION.student.defaultUserEmail,
-      );
-      return;
-    }
 
     if (isParentRoute) {
       setRole("parent");
@@ -93,6 +69,13 @@ export function AppLayout({
       return;
     }
 
+    if (isCounsellorRoute) {
+      setRole("counsellor");
+      if (savedRole === "counsellor" && savedEmail) setCustomEmail(savedEmail);
+      else setCustomEmail(ROLE_NAVIGATION.counsellor.defaultUserEmail);
+      return;
+    }
+
     if (isAdminRoute) {
       setRole("admin");
       if (savedRole === "admin" && savedEmail) {
@@ -109,56 +92,42 @@ export function AppLayout({
     if (savedEmail) {
       setCustomEmail(savedEmail);
     }
-  }, [
-    isAdminRoute,
-    isCounsellorRoute,
-    isParentRoute,
-    isStudentRoute,
-    isTeacherRoute,
-  ]);
+  }, [isAdminRoute, isParentRoute, isTeacherRoute, isCounsellorRoute]);
 
   const currentProfile = ROLE_NAVIGATION[role];
   const resolvedEmail = customEmail || currentProfile.defaultUserEmail;
   const homeHref =
     role === "counsellor"
       ? "/counsellor/dashboard"
-      : role === "student"
-        ? "/student/voice"
-        : role === "parent"
-          ? "/parent/dashboard"
-          : role === "teacher"
-            ? "/teacher/dashboard"
-            : "/dashboard";
+      : role === "parent"
+      ? "/parent/dashboard"
+      : role === "teacher"
+        ? "/teacher/dashboard"
+        : "/dashboard";
   const settingsHref =
     role === "counsellor"
       ? "/counsellor/dashboard"
-      : role === "student"
-        ? "/student/voice"
-        : role === "parent"
-          ? "/parent/profile"
-          : role === "teacher"
-            ? "/teacher/profile"
-            : "/dashboard/settings";
+      : role === "parent"
+      ? "/parent/profile"
+      : role === "teacher"
+        ? "/teacher/profile"
+        : "/dashboard/settings";
   const settingsLabel =
     role === "counsellor"
       ? "Counsellor Workspace"
-      : role === "student"
-        ? "Student Voice Overview"
-        : role === "parent"
-          ? "Parent Profile"
-          : role === "teacher"
-            ? "Teacher Profile"
-            : "Workspace Settings";
+      : role === "parent"
+      ? "Parent Profile"
+      : role === "teacher"
+        ? "Teacher Profile"
+        : "Workspace Settings";
   const notificationsHref =
     role === "counsellor"
-      ? "/counsellor/notices"
-      : role === "student"
-        ? "/student/voice/notices"
-        : role === "parent"
-          ? "/parent/notifications"
-          : role === "teacher"
-            ? "/teacher/notifications"
-            : "/dashboard/notifications";
+      ? "/counsellor/dashboard#student-voice"
+      : role === "parent"
+      ? "/parent/notifications"
+      : role === "teacher"
+        ? "/teacher/notifications"
+        : "/dashboard/notifications";
 
   function handleToggleSidebar() {
     if (typeof window !== "undefined" && window.innerWidth <= 1024) {
@@ -178,8 +147,6 @@ export function AppLayout({
     }
     if (nextRole === "counsellor") {
       router.push("/counsellor/dashboard");
-    } else if (nextRole === "student") {
-      router.push("/student/voice");
     } else if (nextRole === "parent") {
       router.push("/parent/dashboard");
     } else if (nextRole === "teacher") {
@@ -189,15 +156,21 @@ export function AppLayout({
     }
   }
 
-  function handleLogout() {
-    // [DISCONNECTED ENDPOINT] Supabase Sign Out (POST /auth/v1/logout via createClient().auth.signOut)
-    // await createClient().auth.signOut();
-    if (typeof window !== "undefined") {
-      sessionStorage.removeItem("edusync_demo_email");
-      sessionStorage.removeItem("edusync_demo_role");
+  async function handleLogout() {
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Always clear the local workspace selection even if the auth request fails.
+    } finally {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("edusync_demo_email");
+        sessionStorage.removeItem("edusync_demo_role");
+        sessionStorage.removeItem("edusync_active_school_id");
+      }
+      router.replace("/login");
+      router.refresh();
     }
-    router.replace("/login");
-    router.refresh();
   }
 
   return (

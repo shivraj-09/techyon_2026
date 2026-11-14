@@ -95,45 +95,6 @@ export function UserMenu({
             </div>
           </div>
 
-          {/* Role Switcher for Layout Preview */}
-          <div
-            style={{
-              padding: "0.375rem 0.625rem",
-              fontSize: "0.6875rem",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "var(--es-text-subtle)",
-            }}
-          >
-            Layout Role Preview
-          </div>
-          {(
-            ["admin", "teacher", "parent", "counsellor", "student"] as UserRole[]
-          ).map((r) => {
-            const active = r === role;
-            return (
-              <button
-                key={r}
-                type="button"
-                role="menuitem"
-                className="es-popover-item"
-                style={{
-                  fontWeight: active ? 600 : 500,
-                  color: active ? "var(--es-primary)" : undefined,
-                  background: active ? "var(--es-primary-light)" : undefined,
-                }}
-                onClick={() => {
-                  onRoleChange(r);
-                  setOpen(false);
-                }}
-              >
-                <Icon name="user" size={14} />
-                <span>{ROLE_NAVIGATION[r].roleLabel}</span>
-              </button>
-            );
-          })}
-
           <div className="es-popover-divider" />
 
           <Link

@@ -1,269 +1,206 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppLayout, PageHeader } from "@/components/layout";
-import {
-  Badge,
-  Button,
-  Card,
-  CardBody,
-  EmptyState,
-  Icon,
-  Input,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeaderCell,
-  TableRow,
-} from "@/components/ui";
-import {
-  ReferralPriorityBadge,
-  ReferralStatusBadge,
-} from "@/components/counsellor";
-import {
-  CURRENT_TEACHER_ACTOR,
-  REFERRAL_PRIORITIES,
-  type ReferralPriority,
-  type ReferralStatus,
-} from "@/config/counsellor-data";
-import { useCounsellorStore } from "@/config/counsellor-store";
+import { Badge, Button, Card, CardBody, CardHeader, CardTitle } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
+
+type ClassOption = { id: string; name: string; grade_level: string | null; section: string | null; academic_year: string };
+type StudentOption = { id: string; class_id: string; name: string; admission_no: string; roll_number: string | null };
+type Referral = { id: string; student_id: string; class_id: string; category: string; summary: string; urgency: string; status: string; created_at: string };
+
+const API = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+const CATEGORY_MAP: Record<string, string> = {
+  "Academic Difficulty": "academic",
+  "Behavioural Concern": "behaviour",
+  "Social or Peer Difficulties": "peer_relationships",
+  "Emotional Wellbeing Concern": "wellbeing",
+  "Attendance-Related Concern": "attendance",
+  "Other": "other",
+};
 
 export default function TeacherReferralsPage() {
-  const router = useRouter();
-  const { referrals } = useCounsellorStore();
+  const [token, setToken] = useState("");
+  const [schoolId, setSchoolId] = useState("");
+  const [classes, setClasses] = useState<ClassOption[]>([]);
+  const [students, setStudents] = useState<StudentOption[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [classId, setClassId] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [category, setCategory] = useState("Academic Difficulty");
+  const [urgency, setUrgency] = useState("normal");
+  const [summary, setSummary] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | ReferralStatus>(
-    "ALL",
-  );
-  const [priorityFilter, setPriorityFilter] = useState<
-    "ALL" | ReferralPriority
-  >("ALL");
-
-  const myReferrals = useMemo(
-    () =>
-      referrals.filter(
-        (r) => r.submittedByTeacherId === CURRENT_TEACHER_ACTOR.id,
-      ),
-    [referrals],
-  );
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return myReferrals.filter((r) => {
-      if (statusFilter !== "ALL" && r.status !== statusFilter) return false;
-      if (priorityFilter !== "ALL" && r.priority !== priorityFilter) return false;
-      if (!q) return true;
-      return (
-        r.studentName.toLowerCase().includes(q) ||
-        r.studentCode.toLowerCase().includes(q) ||
-        r.referralRef.toLowerCase().includes(q) ||
-        r.className.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q)
-      );
+  const request = useCallback(async (path: string, init: RequestInit = {}) => {
+    if (!token) throw new Error("Your session is not ready. Sign in again.");
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    if (init.body) headers.set("Content-Type", "application/json");
+    const response = await fetch(`${API}/api/v1${path}`, {
+      ...init,
+      headers,
+      cache: "no-store",
     });
-  }, [myReferrals, search, statusFilter, priorityFilter]);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Request failed.");
+    return data;
+  }, [token]);
 
-  const counts = useMemo(
-    () => ({
-      total: myReferrals.length,
-      pending: myReferrals.filter(
-        (r) => r.status === "Submitted" || r.status === "Under Review",
-      ).length,
-      accepted: myReferrals.filter((r) => r.status === "Accepted").length,
-      declined: myReferrals.filter((r) => r.status === "Declined").length,
-    }),
-    [myReferrals],
-  );
+  const load = useCallback(async (sid: string) => {
+    const [classData, referralData] = await Promise.all([
+      request(`/schools/${sid}/classes`),
+      request(`/schools/${sid}/counsellor/referrals`),
+    ]);
+    setClasses(classData.classes || []);
+    setReferrals(referralData.referrals || []);
+  }, [request]);
+
+  useEffect(() => {
+    let active = true;
+    async function initialise() {
+      try {
+        const supabase = createClient();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!session?.access_token) { window.location.replace("/login"); return; }
+        const response = await fetch(`${API}/api/v1/auth/memberships`, {
+          headers: { Authorization: `Bearer ${session.access_token}` }, cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Could not verify teacher membership.");
+        const data = await response.json();
+        const savedSchool = sessionStorage.getItem("edusync_active_school_id");
+        const membership = (data.memberships || []).find((item: { role: string; status: string; school_id: string }) =>
+          item.role === "teacher" && item.status === "active" && (!savedSchool || item.school_id === savedSchool),
+        );
+        if (!membership) { window.location.replace("/login"); return; }
+
+        const { data: assignments, error: assignmentError } = await supabase
+          .from("class_teacher_assignments")
+          .select("class_id")
+          .eq("school_id", membership.school_id)
+          .eq("teacher_user_id", session.user.id);
+        if (assignmentError) throw assignmentError;
+        const assignedIds = new Set((assignments || []).map((item: { class_id: string }) => item.class_id));
+
+        const { data: enrollmentRows, error: enrollmentError } = await supabase
+          .from("student_enrollments")
+          .select("student_id,class_id,roll_number,students(id,first_name,last_name,admission_no)")
+          .eq("school_id", membership.school_id)
+          .eq("status", "active");
+        if (enrollmentError) throw enrollmentError;
+        const studentOptions: StudentOption[] = (enrollmentRows || [])
+          .filter((item: any) => assignedIds.has(item.class_id) && item.students)
+          .map((item: any) => ({
+            id: item.student_id,
+            class_id: item.class_id,
+            name: [item.students.first_name, item.students.last_name].filter(Boolean).join(" "),
+            admission_no: item.students.admission_no || "",
+            roll_number: item.roll_number,
+          }));
+        if (!active) return;
+        setToken(session.access_token);
+        setSchoolId(membership.school_id);
+        setStudents(studentOptions);
+        sessionStorage.setItem("edusync_active_school_id", membership.school_id);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Could not load teacher access.");
+      }
+    }
+    void initialise();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!schoolId || !token) return;
+    setLoading(true);
+    load(schoolId).catch((err) => setError(err instanceof Error ? err.message : "Could not load referrals."))
+      .finally(() => setLoading(false));
+  }, [schoolId, token, load]);
+
+  const classStudents = useMemo(() => students.filter((student) => student.class_id === classId), [students, classId]);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError(""); setNotice("");
+    if (!classId || !studentId) { setError("Select a class and student."); return; }
+    if (summary.trim().length < 10) { setError("Please provide at least 10 characters of factual context."); return; }
+    setBusy(true);
+    try {
+      await request(`/schools/${schoolId}/counsellor/referrals`, {
+        method: "POST",
+        body: JSON.stringify({
+          class_id: classId,
+          student_id: studentId,
+          category: CATEGORY_MAP[category],
+          urgency,
+          summary: summary.trim(),
+        }),
+      });
+      setSummary("");
+      setStudentId("");
+      setNotice("Referral submitted securely to the school counsellor.");
+      await load(schoolId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not submit referral.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <AppLayout defaultRole="teacher">
       <div className="es-stack">
-        <PageHeader
-          title="My Referrals"
-          subtitle="Track student wellbeing referrals you submitted and read permitted status updates from the school counsellor."
-          actions={
-            <Link href="/teacher/referrals/new">
-              <Button leftIcon={<Icon name="file-plus" size={16} />}>
-                Refer a Student
-              </Button>
-            </Link>
-          }
-        />
-
-        <div className="es-stats-grid">
-          <div className="es-stat-card">
-            <div className="es-stat-label">Submitted by Me</div>
-            <div className="es-stat-value">{counts.total}</div>
-            <div className="es-stat-meta">Academic year 2026</div>
-          </div>
-          <div className="es-stat-card">
-            <div className="es-stat-label">In Review</div>
-            <div className="es-stat-value">{counts.pending}</div>
-            <div className="es-stat-meta">Submitted or Under Review</div>
-          </div>
-          <div className="es-stat-card">
-            <div className="es-stat-label">Accepted</div>
-            <div className="es-stat-value">{counts.accepted}</div>
-            <div className="es-stat-meta">Counsellor follow-up active</div>
-          </div>
-          <div className="es-stat-card">
-            <div className="es-stat-label">Declined / Redirected</div>
-            <div className="es-stat-value">{counts.declined}</div>
-            <div className="es-stat-meta">View non-confidential guidance</div>
-          </div>
-        </div>
-
+        <PageHeader title="Student Referrals" subtitle="Submit factual, school-scoped wellbeing referrals for students in your assigned classes." />
+        {error && <div className="es-card" role="alert">{error}</div>}
+        {notice && <div className="es-card" role="status">{notice}</div>}
         <Card>
-          <CardBody className="es-stack" style={{ gap: "1rem" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.75rem",
-                padding: "0.75rem 1rem",
-                borderRadius: "var(--es-radius-md)",
-                backgroundColor: "var(--es-surface-subtle)",
-                border: "1px solid var(--es-border-subtle)",
-                fontSize: "0.8125rem",
-                color: "var(--es-text-secondary)",
-              }}
-            >
-              <Icon name="shield" size={16} />
-              <span>
-                Confidential clinical case notes and private student chats remain
-                restricted to the School Counsellor. Only referral status updates
-                and classroom-safe guidance are shown here.
-              </span>
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "repeat(auto-fit, minmax(min(100%, 210px), 1fr))",
-                gap: "0.75rem",
-              }}
-            >
-              <Input
-                id="teacher-referral-search"
-                leftIcon={<Icon name="search" size={15} />}
-                placeholder="Search student, class, ID, or category..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-              <Select
-                id="teacher-referral-status"
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as "ALL" | ReferralStatus)
-                }
-                options={[
-                  { value: "ALL", label: "All Statuses" },
-                  { value: "Submitted", label: "Submitted" },
-                  { value: "Under Review", label: "Under Review" },
-                  { value: "Accepted", label: "Accepted" },
-                  { value: "Declined", label: "Declined" },
-                ]}
-              />
-              <Select
-                id="teacher-referral-priority"
-                value={priorityFilter}
-                onChange={(e) =>
-                  setPriorityFilter(e.target.value as "ALL" | ReferralPriority)
-                }
-                options={[
-                  { value: "ALL", label: "All Priorities" },
-                  ...REFERRAL_PRIORITIES.map((p) => ({ value: p, label: p })),
-                ]}
-              />
-            </div>
-
-            {filtered.length === 0 ? (
-              <EmptyState
-                icon="clipboard-check"
-                title="No matching referrals found"
-                description="Try adjusting your search or filters, or submit a new student wellbeing referral."
-                action={
-                  <Link href="/teacher/referrals/new">
-                    <Button leftIcon={<Icon name="file-plus" size={15} />}>
-                      Refer a Student
-                    </Button>
-                  </Link>
-                }
-              />
-            ) : (
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableHeaderCell>Referral Ref</TableHeaderCell>
-                    <TableHeaderCell>Student</TableHeaderCell>
-                    <TableHeaderCell>Category</TableHeaderCell>
-                    <TableHeaderCell>Priority</TableHeaderCell>
-                    <TableHeaderCell>Status</TableHeaderCell>
-                    <TableHeaderCell>Submitted</TableHeaderCell>
-                    <TableHeaderCell style={{ textAlign: "right" }}>
-                      Action
-                    </TableHeaderCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filtered.map((item) => (
-                    <TableRow
-                      key={item.id}
-                      style={{ cursor: "pointer" }}
-                      onClick={() =>
-                        router.push(`/teacher/referrals/${item.id}`)
-                      }
-                    >
-                      <TableCell>
-                        <Badge variant="neutral">{item.referralRef}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            color: "var(--es-text-primary)",
-                          }}
-                        >
-                          {item.studentName}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: "0.75rem",
-                            color: "var(--es-text-muted)",
-                          }}
-                        >
-                          {item.className} · {item.studentCode}
-                        </div>
-                      </TableCell>
-                      <TableCell>{item.category}</TableCell>
-                      <TableCell>
-                        <ReferralPriorityBadge priority={item.priority} />
-                      </TableCell>
-                      <TableCell>
-                        <ReferralStatusBadge status={item.status} />
-                      </TableCell>
-                      <TableCell>{item.submittedDate}</TableCell>
-                      <TableCell style={{ textAlign: "right" }}>
-                        <Link
-                          href={`/teacher/referrals/${item.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button variant="ghost" size="sm">
-                            View Details
-                          </Button>
-                        </Link>
-                      </TableCell>
-                    </TableRow>
+          <CardHeader><CardTitle>New referral</CardTitle></CardHeader>
+          <CardBody>
+            <form id="new" onSubmit={submit} className="es-form-grid">
+              <label>Class
+                <select value={classId} onChange={(e) => { setClassId(e.target.value); setStudentId(""); }} required>
+                  <option value="">Choose assigned class</option>
+                  {classes.filter((item) => students.some((s) => s.class_id === item.id)).map((item) => (
+                    <option key={item.id} value={item.id}>{item.name}{item.section ? ` · ${item.section}` : ""} · {item.academic_year}</option>
                   ))}
-                </TableBody>
-              </Table>
-            )}
+                </select>
+              </label>
+              <label>Student
+                <select value={studentId} onChange={(e) => setStudentId(e.target.value)} required disabled={!classId}>
+                  <option value="">Choose student</option>
+                  {classStudents.map((item) => <option key={item.id} value={item.id}>{item.name} · {item.admission_no}{item.roll_number ? ` · Roll ${item.roll_number}` : ""}</option>)}
+                </select>
+              </label>
+              <label>Concern category
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {Object.keys(CATEGORY_MAP).map((item) => <option key={item}>{item}</option>)}
+                </select>
+              </label>
+              <label>Urgency
+                <select value={urgency} onChange={(e) => setUrgency(e.target.value)}>
+                  <option value="low">Low</option><option value="normal">Normal</option><option value="high">High</option>
+                </select>
+              </label>
+              <label className="es-form-grid-full">Factual observations and context
+                <textarea value={summary} onChange={(e) => setSummary(e.target.value)} minLength={10} maxLength={3000} rows={5} required placeholder="Describe what you observed, when it occurred, and any support already offered. Avoid assumptions or diagnoses." />
+              </label>
+              <Button type="submit" disabled={busy || !classId || !studentId || summary.trim().length < 10}>{busy ? "Submitting…" : "Submit referral"}</Button>
+            </form>
+          </CardBody>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>My submitted referrals</CardTitle></CardHeader>
+          <CardBody>
+            {loading ? <p>Loading referrals…</p> : referrals.length === 0 ? <p>No referrals submitted yet.</p> : referrals.map((item) => (
+              <article key={item.id} className="es-list-row">
+                <div><strong>{item.category.replaceAll("_", " ")}</strong><p>{item.summary}</p><small>{item.status.replaceAll("_", " ")} · {new Date(item.created_at).toLocaleString()}</small></div>
+                <div className="es-row-actions"><Badge>{item.urgency}</Badge></div>
+              </article>
+            ))}
           </CardBody>
         </Card>
       </div>

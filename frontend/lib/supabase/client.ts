@@ -1,22 +1,12 @@
-// ============================================================================
-// [DISCONNECTED SUPABASE CLIENT]
-// Previously connected to Supabase Auth & PostgREST via @supabase/ssr:
-// - NEXT_PUBLIC_SUPABASE_URL
-// - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-// ============================================================================
-
-/*
 import { createBrowserClient } from "@supabase/ssr";
 
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
-  );
-}
-*/
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-// Offline UI Preview stub (no network or Supabase calls)
-export function createClient() {
-  return null;
+  if (!url || !key) {
+    throw new Error("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.");
+  }
+
+  return createBrowserClient(url, key);
 }
