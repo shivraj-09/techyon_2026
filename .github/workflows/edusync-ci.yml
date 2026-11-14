@@ -116,3 +116,86 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h localhost -U postgres -d edusync_test -v ON_ERROR_STOP=1 -f backend/tests/sql/test_counsellor_rls_behaviour.sql
+
+
+  production-smoke:
+    name: Live CIRCLE production smoke checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check production API, OpenAPI, and CORS
+        env:
+          CIRCLE_API_URL: https://techyon-2026.onrender.com
+          CIRCLE_FRONTEND_URL: https://edusync-frontend-ten.vercel.app
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          api = os.environ["CIRCLE_API_URL"].rstrip("/")
+          frontend = os.environ["CIRCLE_FRONTEND_URL"].rstrip("/")
+
+          def get_json(path):
+              request = urllib.request.Request(f"{api}{path}", headers={"Accept": "application/json"})
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  assert response.status == 200, f"{path}: HTTP {response.status}"
+                  return json.load(response)
+
+          root = get_json("/")
+          assert root.get("status") == "running", f"Unexpected root response: {root}"
+          assert "CIRCLE" in root.get("message", ""), f"API root is not branded CIRCLE: {root}"
+
+          health = get_json("/health")
+          assert health.get("status") == "healthy", f"Health check failed: {health}"
+          assert health.get("service") == "circle-backend", f"Unexpected health identity: {health}"
+
+          openapi = get_json("/openapi.json")
+          assert openapi.get("info", {}).get("title") == "CIRCLE API", (
+              f"Unexpected OpenAPI title: {openapi.get('info', {}).get('title')}"
+          )
+          assert "/api/v1/auth/me" in openapi.get("paths", {}), "Authentication route is missing"
+
+          preflight = urllib.request.Request(
+              f"{api}/api/v1/auth/me",
+              method="OPTIONS",
+              headers={
+                  "Origin": frontend,
+                  "Access-Control-Request-Method": "GET",
+                  "Access-Control-Request-Headers": "authorization",
+              },
+          )
+          with urllib.request.urlopen(preflight, timeout=45) as response:
+              allow_origin = response.headers.get("Access-Control-Allow-Origin")
+              allow_methods = response.headers.get("Access-Control-Allow-Methods", "")
+              assert response.status == 200, f"CORS preflight: HTTP {response.status}"
+              assert allow_origin == frontend, f"Wrong CORS origin: {allow_origin}"
+              assert "GET" in allow_methods, f"GET not allowed by CORS: {allow_methods}"
+
+          print("Production API root: OK")
+          print("Production /health: OK")
+          print("Production OpenAPI title and auth route: OK")
+          print("Production CORS preflight: OK")
+          PY
+      - name: Check public CIRCLE frontend routes
+        env:
+          CIRCLE_FRONTEND_URL: https://edusync-frontend-ten.vercel.app
+        run: |
+          python - <<'PY'
+          import os
+          import urllib.request
+
+          base = os.environ["CIRCLE_FRONTEND_URL"].rstrip("/")
+          for path in ("/", "/login", "/counsellor/dashboard", "/student-voice", "/circle-logo.svg"):
+              request = urllib.request.Request(f"{base}{path}", headers={"User-Agent": "CIRCLE-Production-Smoke/1.0"})
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  body = response.read().decode("utf-8", "replace")
+                  assert response.status == 200, f"{path}: HTTP {response.status}"
+                  if path != "/circle-logo.svg":
+                      assert "CIRCLE" in body, f"{path} does not render the CIRCLE brand"
+              print(f"{path}: OK")
+          PY
