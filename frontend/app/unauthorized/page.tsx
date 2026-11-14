@@ -23,7 +23,7 @@ function UnauthorizedContent() {
     <ErrorState
       kind="401"
       primaryAction={{
-        label: "Sign In to Circle",
+        label: "Sign In to CIRCLE",
         href: loginHref,
       }}
       secondaryAction={{
@@ -40,7 +40,7 @@ export default function UnauthorizedPage() {
       fallback={
         <ErrorState
           kind="401"
-          primaryAction={{ label: "Sign In to Circle", href: "/login" }}
+          primaryAction={{ label: "Sign In to CIRCLE", href: "/login" }}
           secondaryAction={{ label: "Back to Home", href: "/" }}
         />
       }

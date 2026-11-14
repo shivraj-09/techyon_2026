@@ -93,7 +93,7 @@ export default function HomePage() {
             >
               <Image src="/circle-logo.svg" alt="" width={30} height={30} className="es-brand-logo-image" priority />
             </span>
-            <span>Circle</span>
+            <span>CIRCLE</span>
           </Link>
 
           <nav
@@ -197,7 +197,7 @@ export default function HomePage() {
                   maxWidth: "560px",
                 }}
               >
-                Circle brings academics, attendance, fee collections, family
+                CIRCLE brings academics, attendance, fee collections, family
                 communication, and confidential counselling together with
                 role-based workspaces built for daily clarity.
               </p>

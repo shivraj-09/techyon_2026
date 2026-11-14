@@ -5,8 +5,8 @@ import "./globals.css";
 import "../styles/design-system.css";
 
 export const metadata: Metadata = {
-  title: "Circle | School Operating System",
-  description: "Circle brings school operations, communication, and student care into one connected workspace.",
+  title: "CIRCLE | School Operating System",
+  description: "CIRCLE brings school operations, communication, and student care into one connected workspace.",
 };
 
 export default function RootLayout({

@@ -82,7 +82,7 @@ export default function AcceptInvitePage() {
 
   return (
     <main>
-      <header className="topbar"><div className="brand"><span className="mark"><Image src="/circle-logo.svg" alt="" width={28} height={28} className="circle-auth-brand-logo" priority /></span>Circle</div></header>
+      <header className="topbar"><div className="brand"><span className="mark"><Image src="/circle-logo.svg" alt="" width={28} height={28} className="circle-auth-brand-logo" priority /></span>CIRCLE</div></header>
       <div className="auth card">
         <span className="pill">SCHOOL INVITATION</span>
         <h1>You’re almost in</h1>

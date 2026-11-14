@@ -86,7 +86,7 @@ export function AppSidebar({
               <Image src="/circle-logo.svg" alt="" width={28} height={28} className="es-brand-logo-image" priority />
             </span>
             <span className="es-brand-text">
-              <span className="es-brand-title">Circle</span>
+              <span className="es-brand-title">CIRCLE</span>
               <span className="es-brand-subtitle">School OS</span>
             </span>
           </Link>

@@ -75,7 +75,7 @@ export default function GlobalError({
           >
             <span style={{ fontWeight: 700, fontSize: "15px", display: "inline-flex", alignItems: "center", gap: "9px" }}>
               <Image src="/circle-logo.svg" alt="" width={30} height={30} style={{ filter: "brightness(0) invert(1)" }} priority />
-              Circle
+              CIRCLE
             </span>
             <span
               style={{
@@ -107,7 +107,7 @@ export default function GlobalError({
                 color: textMuted,
               }}
             >
-              We encountered an unexpected error while loading Circle. You can
+              We encountered an unexpected error while loading CIRCLE. You can
               try reloading this view or return to the login page.
             </p>
 

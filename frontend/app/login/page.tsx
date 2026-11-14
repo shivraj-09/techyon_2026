@@ -210,7 +210,7 @@ export default function LoginPage() {
             <div className="login-logo-badge">
               <Image src="/circle-logo.svg" alt="" width={46} height={46} className="login-brand-logo" priority />
             </div>
-            <h1 className="login-title">Circle</h1>
+            <h1 className="login-title">CIRCLE</h1>
             <p className="login-subtitle">
               One institution. One connected ecosystem.
             </p>
@@ -491,7 +491,7 @@ export default function LoginPage() {
                   "Signing in…"
                 ) : (
                   <>
-                    Sign In to Circle
+                    Sign In to CIRCLE
                     <svg
                       width="16"
                       height="16"
