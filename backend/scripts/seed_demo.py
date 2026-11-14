@@ -55,7 +55,8 @@ class DemoSeeder:
         self.client = httpx.Client(
             timeout=25.0,
             headers={
-                "apikey": self.secret,\n                "Authorization": "Bearer " + self.secret,
+                "apikey": self.secret,
+                "Authorization": "Bearer " + self.secret,
                 "Content-Type": "application/json",
             },
         )
