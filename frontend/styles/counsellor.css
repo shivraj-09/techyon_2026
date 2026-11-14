@@ -1,0 +1,345 @@
+/* ==========================================================================
+   CIRCLE · Counsellor workspace
+   Scoped presentation only. No application behaviour is changed.
+   ========================================================================== */
+
+.es-counsellor-workspace {
+  --circle-care-accent: #477fe8;
+  --circle-care-accent-soft: rgba(71, 127, 232, 0.09);
+  --circle-care-green: #21866a;
+  --circle-care-violet: #7664c5;
+  --circle-care-amber: #bd8731;
+  width: 100%;
+  gap: 22px;
+}
+
+.es-counsellor-workspace .es-page-header {
+  margin-bottom: 2px;
+}
+
+.es-counsellor-workspace > .es-grid-4 {
+  gap: 14px;
+}
+
+.es-counsellor-workspace .es-stat-card {
+  position: relative;
+  min-width: 0;
+  min-height: 118px;
+  padding: 19px 20px;
+  overflow: hidden;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 100% 0%, var(--circle-care-accent-soft), transparent 45%),
+    var(--es-bg-surface);
+  box-shadow: var(--es-shadow-sm);
+}
+
+.es-counsellor-workspace .es-stat-card::after {
+  position: absolute;
+  right: 16px;
+  bottom: 14px;
+  width: 36px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--circle-care-accent);
+  content: "";
+  opacity: 0.7;
+}
+
+.es-counsellor-workspace .es-stat-card:nth-child(2)::after {
+  background: var(--circle-care-green);
+}
+
+.es-counsellor-workspace .es-stat-card:nth-child(3)::after {
+  background: var(--circle-care-violet);
+}
+
+.es-counsellor-workspace .es-stat-card:nth-child(4)::after {
+  background: var(--circle-care-amber);
+}
+
+.es-counsellor-workspace .es-stat-label {
+  color: var(--es-text-muted);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.es-counsellor-workspace .es-stat-value {
+  margin-top: 2px;
+  font-size: clamp(26px, 3vw, 32px);
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.es-counsellor-workspace > section.es-card {
+  min-width: 0;
+  padding: 23px 24px;
+  border: 1px solid var(--es-border);
+  border-radius: 16px;
+  background: var(--es-bg-surface);
+  box-shadow: var(--es-shadow-sm);
+}
+
+.es-counsellor-workspace > section.es-card > h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 9px;
+  font-size: 17px;
+  letter-spacing: -0.025em;
+}
+
+.es-counsellor-workspace > section.es-card > h2::before {
+  width: 4px;
+  height: 20px;
+  flex: 0 0 4px;
+  border-radius: 999px;
+  background: var(--circle-care-accent);
+  content: "";
+}
+
+.es-counsellor-workspace > section.es-card > p {
+  max-width: 850px;
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.es-counsellor-workspace #cases > h2::before {
+  background: var(--circle-care-violet);
+}
+
+.es-counsellor-workspace #sessions > h2::before {
+  background: var(--circle-care-amber);
+}
+
+.es-counsellor-workspace #student-voice > h2::before {
+  background: var(--circle-care-green);
+}
+
+.es-counsellor-workspace .es-list-row {
+  align-items: center;
+  gap: 16px;
+  margin-top: 9px;
+  padding: 14px 15px;
+  border-color: var(--es-border-subtle);
+  border-radius: 12px;
+  background: var(--es-bg-surface);
+  box-shadow: none;
+}
+
+.es-counsellor-workspace .es-list-row:hover {
+  border-color: var(--es-primary-border);
+  background: var(--es-bg-hover);
+  box-shadow: var(--es-shadow-xs);
+}
+
+.es-counsellor-workspace .es-list-row > div:first-child {
+  min-width: 0;
+}
+
+.es-counsellor-workspace .es-list-row strong {
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.es-counsellor-workspace .es-list-row p {
+  margin: 5px 0;
+  line-height: 1.6;
+}
+
+.es-counsellor-workspace .es-list-row small {
+  display: inline-block;
+  margin-top: 2px;
+  color: var(--es-text-subtle);
+}
+
+.es-counsellor-workspace .es-row-actions {
+  gap: 7px;
+}
+
+.es-counsellor-workspace .es-form-grid {
+  gap: 14px;
+  margin-top: 16px;
+  padding: 18px;
+  border-color: var(--es-border-subtle);
+  border-radius: 13px;
+  background: var(--es-bg-app);
+}
+
+.es-counsellor-workspace .es-form-grid h3 {
+  margin-top: 0;
+  font-size: 14px;
+}
+
+.es-counsellor-workspace .es-form-grid label {
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.es-counsellor-workspace .es-form-grid input,
+.es-counsellor-workspace .es-form-grid select,
+.es-counsellor-workspace .es-form-grid textarea {
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--es-bg-surface);
+}
+
+.es-counsellor-workspace .es-form-grid textarea {
+  min-height: 104px;
+  line-height: 1.55;
+}
+
+.es-counsellor-workspace .es-form-grid > button {
+  min-height: 38px;
+}
+
+.es-counsellor-workspace #sessions .es-dashboard-grid-main,
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+.es-counsellor-workspace #sessions .es-dashboard-grid-main > form {
+  min-width: 0;
+  align-content: start;
+}
+
+.es-counsellor-workspace #sessions .es-dashboard-grid-main > form h3,
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main h3 {
+  margin-top: 0;
+}
+
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main > div {
+  min-width: 0;
+}
+
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main > div:first-child > button.es-list-row {
+  justify-content: flex-start;
+  min-height: 58px;
+  gap: 12px;
+}
+
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main > div:first-child > button.es-list-row strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.es-counsellor-workspace #student-voice .es-dashboard-grid-main > div:first-child > button.es-list-row span {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border: 1px solid var(--es-border-subtle);
+  border-radius: 999px;
+  background: var(--es-bg-app);
+  font-size: 10.5px;
+  text-transform: capitalize;
+}
+
+.es-counsellor-workspace #student-voice > .es-card {
+  margin-top: 16px;
+  border-radius: 13px;
+  background: var(--es-bg-app);
+  box-shadow: none;
+}
+
+.es-counsellor-workspace #student-voice .es-message-list {
+  max-height: 460px;
+  min-height: 130px;
+  gap: 9px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--es-bg-surface);
+}
+
+.es-counsellor-workspace #student-voice .es-message-list p {
+  max-width: min(90%, 650px);
+  padding: 11px 13px;
+  border-radius: 11px;
+  line-height: 1.6;
+}
+
+.es-counsellor-workspace [role="alert"],
+.es-counsellor-workspace [role="status"] {
+  padding: 13px 16px;
+  border-radius: 12px;
+}
+
+.es-counsellor-workspace [role="alert"] {
+  border: 1px solid var(--es-danger-border) !important;
+  background: var(--es-danger-bg);
+  color: var(--es-danger-text) !important;
+}
+
+.es-counsellor-workspace [role="status"] {
+  border: 1px solid var(--es-success-border);
+  background: var(--es-success-bg);
+  color: var(--es-success-text);
+}
+
+@media (max-width: 1180px) {
+  .es-counsellor-workspace #sessions .es-dashboard-grid-main,
+  .es-counsellor-workspace #student-voice .es-dashboard-grid-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .es-counsellor-workspace {
+    gap: 18px;
+  }
+
+  .es-counsellor-workspace > .es-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 11px;
+  }
+
+  .es-counsellor-workspace .es-stat-card {
+    min-height: 104px;
+    padding: 16px;
+  }
+
+  .es-counsellor-workspace > section.es-card {
+    padding: 19px 17px;
+  }
+}
+
+@media (max-width: 540px) {
+  .es-counsellor-workspace > .es-grid-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .es-counsellor-workspace > section.es-card {
+    padding: 17px 14px;
+    border-radius: 13px;
+  }
+
+  .es-counsellor-workspace .es-list-row {
+    align-items: flex-start;
+    padding: 13px;
+  }
+
+  .es-counsellor-workspace .es-row-actions {
+    justify-content: flex-start;
+  }
+
+  .es-counsellor-workspace #student-voice .es-dashboard-grid-main > div:first-child > button.es-list-row {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .es-counsellor-workspace #student-voice .es-dashboard-grid-main > div:first-child > button.es-list-row span {
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .es-counsellor-workspace .es-stat-card,
+  .es-counsellor-workspace .es-list-row {
+    transition: none;
+  }
+}
