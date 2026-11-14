@@ -783,6 +783,25 @@ class CanonicalSchemaSnapshotTests(TestCase):
         self.assertIn("revoke all privileges on all tables in schema public from anon", self.privileges)
         self.assertIn("grant select, insert, update, delete on all tables in schema public to authenticated", self.privileges)
 
+    def test_student_voice_tables_revoke_broad_table_grants(self):
+        from pathlib import Path
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "migrations"
+            / "202611140017_harden_student_voice_table_privileges.sql"
+        ).read_text().lower()
+        for table in (
+            "student_voice_student_links",
+            "student_voice_conversations",
+            "student_voice_messages",
+            "student_voice_meeting_requests",
+        ):
+            self.assertIn(
+                f"revoke all privileges on table public.{table}",
+                migration,
+            )
+        self.assertIn("from public, anon, authenticated", migration)
+
 
 class ReferralListAuthorizationTests(IsolatedAsyncioTestCase):
     async def test_teacher_referral_list_is_scoped_to_submitter(self):
