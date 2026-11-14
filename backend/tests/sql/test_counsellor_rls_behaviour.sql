@@ -257,32 +257,32 @@ SET LOCAL ROLE authenticated;
 SELECT set_config('request.jwt.claim.sub', '20000000-0000-4000-8000-000000000006', true);
 DO $$
 BEGIN
-  IF public.student_voice_owns_active_conversation(
+  IF private.student_voice_owns_active_conversation(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001'
      ) THEN
     RAISE EXCEPTION 'Dual-role account passed student conversation ownership check';
   END IF;
-  IF public.student_voice_is_active_linked_student(
+  IF private.student_voice_is_active_linked_student(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001',
        false
      ) THEN
     RAISE EXCEPTION 'Dual-role account passed private student identity check';
   END IF;
-  IF public.student_voice_student_can_message_conversation(
+  IF private.student_voice_student_can_message_conversation(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001'
      ) THEN
     RAISE EXCEPTION 'Dual-role account passed student message authorization';
   END IF;
-  IF public.student_voice_counsellor_can_read_conversation(
+  IF private.student_voice_counsellor_can_read_conversation(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001'
-     ) OR public.student_voice_counsellor_can_message_conversation(
+     ) OR private.student_voice_counsellor_can_message_conversation(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001'
-     ) OR public.student_voice_counsellor_can_handle_meeting(
+     ) OR private.student_voice_counsellor_can_handle_meeting(
        '10000000-0000-4000-8000-000000000001',
        '70000000-0000-4000-8000-000000000001'
      ) THEN
