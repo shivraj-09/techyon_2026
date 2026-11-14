@@ -55,7 +55,7 @@ class DemoSeeder:
         self.client = httpx.Client(
             timeout=25.0,
             headers={
-                "apikey": self.secret,
+                "apikey": self.secret,\n                "Authorization": "Bearer " + self.secret,
                 "Content-Type": "application/json",
             },
         )
@@ -331,7 +331,7 @@ class DemoSeeder:
                     "student_id": student_id,
                     "class_id": class_id,
                     "submitted_by": user_ids["teacher"],
-                    "category": "academic_support",
+                    "category": "academic",
                     "summary": "Demo referral: student would benefit from a check-in about study routines and workload.",
                     "urgency": "normal",
                     "status": "submitted",
