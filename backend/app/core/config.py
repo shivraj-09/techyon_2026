@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    APP_NAME: str = "EduSync API"
+    APP_NAME: str = "CIRCLE API"
     APP_ENV: str = "development"
     API_V1_PREFIX: str = "/api/v1"
 
