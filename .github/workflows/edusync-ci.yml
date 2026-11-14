@@ -2,9 +2,9 @@ name: EduSync integration checks
 
 on:
   pull_request:
-    branches: [dev]
+    branches: [dev, main]
   push:
-    branches: [integration/backend-into-dev, feature/counsellor-backend]
+    branches: [dev, main, integration/backend-into-dev, feature/counsellor-backend]
 
 permissions:
   contents: read
